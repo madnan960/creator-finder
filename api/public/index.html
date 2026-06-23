@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Creator Finder — YouTube channel discovery</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --bg: #0e0f13;
+    --panel: #16181f;
+    --panel-2: #1c1f28;
+    --line: #2a2e3a;
+    --ink: #f2f3f7;
+    --muted: #8b90a0;
+    --accent: #ff3b30;
+    --accent-soft: #ff3b3022;
+    --ok: #34d399;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    line-height: 1.5;
+    min-height: 100vh;
+    padding: 32px 20px 80px;
+  }
+  .wrap { max-width: 1040px; margin: 0 auto; }
+
+  header { margin-bottom: 28px; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--accent); background: var(--accent-soft);
+    border: 1px solid var(--accent); border-radius: 100px;
+    padding: 5px 12px; margin-bottom: 16px;
+  }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+  h1 { font-size: clamp(28px, 5vw, 44px); font-weight: 700; letter-spacing: -0.02em; line-height: 1.05; }
+  h1 .thin { color: var(--muted); font-weight: 400; }
+  .sub { color: var(--muted); margin-top: 10px; max-width: 560px; }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 22px;
+    margin-top: 22px;
+  }
+  .panel h2 {
+    font-size: 13px; font-family: 'JetBrains Mono', monospace;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--muted); margin-bottom: 16px; font-weight: 500;
+  }
+
+  label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  input, textarea {
+    width: 100%; background: var(--panel-2); border: 1px solid var(--line);
+    color: var(--ink); border-radius: 10px; padding: 11px 13px;
+    font-family: 'JetBrains Mono', monospace; font-size: 14px;
+    transition: border-color .15s;
+  }
+  input:focus, textarea:focus { outline: none; border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 64px; }
+  .field { margin-bottom: 16px; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .hint a { color: var(--accent); }
+
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  @media (max-width: 640px) { .grid3 { grid-template-columns: 1fr; } }
+
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 9px;
+    background: var(--accent); color: #fff; border: none;
+    border-radius: 10px; padding: 13px 22px; font-size: 15px; font-weight: 600;
+    font-family: 'Space Grotesk', sans-serif; cursor: pointer;
+    transition: transform .08s, opacity .15s; width: 100%;
+  }
+  .btn:hover { opacity: .92; }
+  .btn:active { transform: translateY(1px); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .btn-ghost {
+    background: transparent; border: 1px solid var(--line); color: var(--ink); width: auto;
+  }
+
+  .status { margin-top: 16px; font-family: 'JetBrains Mono', monospace; font-size: 13px; min-height: 20px; }
+  .status.err { color: var(--accent); }
+  .status.ok { color: var(--ok); }
+  .spinner {
+    display: inline-block; width: 13px; height: 13px; border: 2px solid var(--muted);
+    border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite;
+    vertical-align: middle; margin-right: 7px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .results { margin-top: 22px; display: none; }
+  .results.show { display: block; }
+  .results-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; flex-wrap: wrap; gap: 12px; }
+  .count { font-family: 'JetBrains Mono', monospace; }
+  .count b { color: var(--accent); font-size: 22px; }
+
+  .table-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th {
+    text-align: left; padding: 12px 14px; background: var(--panel-2);
+    font-family: 'JetBrains Mono', monospace; font-weight: 500; color: var(--muted);
+    text-transform: uppercase; font-size: 11px; letter-spacing: 0.06em;
+    border-bottom: 1px solid var(--line); white-space: nowrap;
+  }
+  td { padding: 11px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--panel-2); }
+  td a { color: var(--accent); text-decoration: none; }
+  td a:hover { text-decoration: underline; }
+  .num { font-family: 'JetBrains Mono', monospace; text-align: right; }
+  .name { font-weight: 600; }
+  .muted-cell { color: var(--muted); }
+
+  footer { margin-top: 40px; color: var(--muted); font-size: 12px; text-align: center; font-family: 'JetBrains Mono', monospace; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="badge"><span class="dot"></span> youtube discovery</div>
+    <h1>Creator Finder <span class="thin">/ find channels that fit</span></h1>
+    <p class="sub">Search YouTube for real, English-voice creators by topic. Filter by subscribers and recent views, skip music and verified mega-channels, and export the whole list to Excel.</p>
+  </header>
+
+  <div class="panel">
+    <h2>01 — Your API key</h2>
+    <div class="field">
+      <label for="key">YouTube Data API v3 key</label>
+      <input id="key" type="password" placeholder="AIza..." autocomplete="off">
+      <p class="hint">Your key stays in your browser and is sent only to YouTube. Don't have one? <a href="https://console.cloud.google.com/" target="_blank" rel="noopener">Get a free key</a> — enable "YouTube Data API v3", then create an API key.</p>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>02 — Search</h2>
+    <div class="field">
+      <label for="kw">Keywords (comma separated)</label>
+      <textarea id="kw" placeholder="vlogs, tech review, fitness, cooking, finance tips">daily vlog, tech review, fitness, cooking, finance tips</textarea>
+    </div>
+    <div class="grid3">
+      <div class="field">
+        <label for="subs">Min subscribers</label>
+        <input id="subs" type="number" value="200000">
+      </div>
+      <div class="field">
+        <label for="views">Min recent views</label>
+        <input id="views" type="number" value="100000">
+      </div>
+      <div class="field">
+        <label for="per">Scan per keyword</label>
+        <input id="per" type="number" value="50" max="100">
+      </div>
+    </div>
+    <button class="btn" id="go">
+      <span id="go-label">Find creators</span>
+    </button>
+    <div class="status" id="status"></div>
+  </div>
+
+  <div class="results" id="results">
+    <div class="results-head">
+      <div class="count"><b id="rcount">0</b> creators found</div>
+      <button class="btn btn-ghost" id="export">⬇ Export to Excel</button>
+    </div>
+    <div class="table-scroll">
+      <table id="tbl">
+        <thead>
+          <tr>
+            <th>#</th><th>Channel</th><th>Link</th><th class="num">Subscribers</th>
+            <th class="num">Top recent views</th><th class="num">Videos</th>
+            <th>Email</th><th>Keyword</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <footer>Results depend on YouTube's data. Voice language is estimated from channel metadata, not audio.</footer>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+let lastResults = [];
+
+function fmt(n) { return Number(n).toLocaleString(); }
+
+async function run() {
+  const apiKey = $("key").value.trim();
+  const keywords = $("kw").value.split(",").map(k => k.trim()).filter(Boolean);
+  const minSubs = $("subs").value;
+  const minViews = $("views").value;
+  const perKeyword = $("per").value;
+
+  if (!apiKey) { setStatus("Enter your API key first.", "err"); return; }
+  if (!keywords.length) { setStatus("Enter at least one keyword.", "err"); return; }
+
+  $("go").disabled = true;
+  $("go-label").textContent = "Searching…";
+  setStatus('<span class="spinner"></span>Scanning ' + keywords.length + ' keyword(s). This can take a minute…');
+
+  try {
+    const r = await fetch("/api/search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ apiKey, keywords, minSubs, minViews, perKeyword }),
+    });
+    const data = await r.json();
+    if (!r.ok) { setStatus(data.error || "Something went wrong.", "err"); return; }
+
+    lastResults = data.creators;
+    render(data.creators);
+    if (data.count === 0) {
+      setStatus("No creators matched. Try broader keywords or lower the view threshold.", "err");
+    } else {
+      setStatus("Done — " + data.count + " creators found.", "ok");
+    }
+  } catch (e) {
+    setStatus("Network error: " + e.message, "err");
+  } finally {
+    $("go").disabled = false;
+    $("go-label").textContent = "Find creators";
+  }
+}
+
+function setStatus(html, cls) {
+  const s = $("status");
+  s.innerHTML = html;
+  s.className = "status" + (cls ? " " + cls : "");
+}
+
+function render(rows) {
+  const tb = $("tbody");
+  tb.innerHTML = "";
+  rows.forEach((r, i) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML =
+      '<td class="muted-cell">' + (i + 1) + '</td>' +
+      '<td class="name">' + esc(r.name) + '</td>' +
+      '<td><a href="' + r.link + '" target="_blank" rel="noopener">open ↗</a></td>' +
+      '<td class="num">' + fmt(r.subs) + '</td>' +
+      '<td class="num">' + fmt(r.topRecentViews) + '</td>' +
+      '<td class="num">' + fmt(r.videos) + '</td>' +
+      '<td class="muted-cell">' + (r.email ? esc(r.email) : "—") + '</td>' +
+      '<td class="muted-cell">' + esc(r.keyword) + '</td>';
+    tb.appendChild(tr);
+  });
+  $("rcount").textContent = rows.length;
+  $("results").classList.add("show");
+}
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, c =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+function exportXlsx() {
+  if (!lastResults.length) return;
+  const data = lastResults.map((r, i) => ({
+    "#": i + 1,
+    "Channel Name": r.name,
+    "Channel Link": r.link,
+    "Handle URL": r.handle,
+    "Subscribers": r.subs,
+    "Total Views": r.totalViews,
+    "Video Count": r.videos,
+    "Top Recent Views": r.topRecentViews,
+    "Email": r.email,
+    "Country": r.country,
+    "Keyword": r.keyword,
+  }));
+  const ws = XLSX.utils.json_to_sheet(data);
+  ws["!cols"] = [{wch:4},{wch:30},{wch:48},{wch:44},{wch:13},{wch:15},{wch:11},{wch:17},{wch:28},{wch:9},{wch:18}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Creators");
+  const stamp = new Date().toISOString().slice(0,16).replace(/[-:T]/g,"");
+  XLSX.writeFile(wb, "youtube_creators_" + stamp + ".xlsx");
+}
+
+$("go").addEventListener("click", run);
+$("export").addEventListener("click", exportXlsx);
+</script>
+</body>
+</html>
