@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CreatorScout — App</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --bg:#0b0f1a; --bg-2:#0f1422; --panel:#141a2b; --panel-2:#1b2236; --line:#283150;
+    --ink:#eef1f8; --muted:#8a93ad; --muted-2:#5f6680;
+    --amber:#f5b14c; --amber-soft:#f5b14c1f; --amber-line:#f5b14c55;
+    --ok:#34d399; --err:#fb7185; --radius:16px;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:
+      radial-gradient(1100px 500px at 80% -10%, #1a2340 0%, transparent 60%),
+      radial-gradient(900px 500px at 0% 0%, #14243a 0%, transparent 55%), var(--bg);
+    color:var(--ink); font-family:'Sora',system-ui,sans-serif; line-height:1.55; min-height:100vh; padding:32px 20px 90px; }
+  .wrap { max-width:1060px; margin:0 auto; }
+  .gate { max-width:480px; margin:80px auto; text-align:center; background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:36px; }
+  .gate h2 { font-size:22px; margin-bottom:10px; }
+  .gate p { color:var(--muted); margin-bottom:22px; }
+  .hidden { display:none; }
+
+  .topbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; flex-wrap:wrap; gap:12px; }
+  .brand { font-weight:800; font-size:22px; }
+  .brand .grad { background:linear-gradient(120deg,var(--amber),#ffd789); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+  .userbox { display:flex; align-items:center; gap:14px; font-size:13px; color:var(--muted); font-family:'JetBrains Mono',monospace; }
+  .pill { background:var(--amber-soft); border:1px solid var(--amber-line); color:var(--amber); padding:4px 10px; border-radius:100px; font-size:12px; }
+
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:24px; margin-top:20px; }
+  .panel h2 { font-size:12px; font-family:'JetBrains Mono',monospace; text-transform:uppercase; letter-spacing:.1em; color:var(--amber); margin-bottom:18px; font-weight:500; display:flex; align-items:center; gap:10px; }
+  .panel h2::after { content:""; flex:1; height:1px; background:var(--line); }
+  label { display:block; font-size:13px; color:var(--muted); margin-bottom:7px; }
+  input, textarea { width:100%; background:var(--panel-2); border:1px solid var(--line); color:var(--ink); border-radius:11px; padding:12px 14px; font-family:'JetBrains Mono',monospace; font-size:14px; transition:border-color .15s, box-shadow .15s; }
+  input:focus, textarea:focus { outline:none; border-color:var(--amber-line); box-shadow:0 0 0 3px var(--amber-soft); }
+  textarea { resize:vertical; min-height:66px; }
+  .field { margin-bottom:18px; }
+  .hint { font-size:12px; color:var(--muted); margin-top:7px; }
+  .hint a { color:var(--amber); }
+  .grid4 { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+  @media (max-width:720px){ .grid4{ grid-template-columns:1fr 1fr; } }
+  @media (max-width:440px){ .grid4{ grid-template-columns:1fr; } }
+  .btn { display:inline-flex; align-items:center; justify-content:center; gap:9px; background:linear-gradient(120deg,var(--amber),#ffc868); color:#1a1205; border:none; border-radius:11px; padding:14px 22px; font-size:15px; font-weight:700; font-family:'Sora',sans-serif; cursor:pointer; transition:transform .08s, box-shadow .15s; width:100%; box-shadow:0 6px 20px -8px var(--amber); }
+  .btn:hover { box-shadow:0 8px 26px -6px var(--amber); }
+  .btn:active { transform:translateY(1px); }
+  .btn:disabled { opacity:.55; cursor:not-allowed; box-shadow:none; }
+  .btn-ghost { background:transparent; border:1px solid var(--line); color:var(--ink); width:auto; box-shadow:none; font-weight:600; font-size:13px; padding:8px 14px; border-radius:9px; cursor:pointer; font-family:'Sora',sans-serif; }
+  .btn-ghost:hover { border-color:var(--amber-line); }
+  .status { margin-top:16px; font-family:'JetBrains Mono',monospace; font-size:13px; min-height:20px; }
+  .status.err { color:var(--err); }
+  .status.ok { color:var(--ok); }
+  .spinner { display:inline-block; width:13px; height:13px; border:2px solid var(--line); border-top-color:var(--amber); border-radius:50%; animation:spin .7s linear infinite; vertical-align:middle; margin-right:8px; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .results { margin-top:22px; display:none; }
+  .results.show { display:block; }
+  .results-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; flex-wrap:wrap; gap:12px; }
+  .count { font-family:'JetBrains Mono',monospace; }
+  .count b { color:var(--amber); font-size:24px; }
+  .table-scroll { overflow-x:auto; border:1px solid var(--line); border-radius:var(--radius); }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th { text-align:left; padding:13px 15px; background:var(--panel-2); font-family:'JetBrains Mono',monospace; font-weight:500; color:var(--muted); text-transform:uppercase; font-size:11px; letter-spacing:.06em; border-bottom:1px solid var(--line); white-space:nowrap; }
+  td { padding:12px 15px; border-bottom:1px solid var(--line); vertical-align:top; }
+  tr:last-child td { border-bottom:none; }
+  tr:hover td { background:var(--panel-2); }
+  td a { color:var(--amber); text-decoration:none; }
+  td a:hover { text-decoration:underline; }
+  .num { font-family:'JetBrains Mono',monospace; text-align:right; }
+  .name { font-weight:600; }
+  .muted-cell { color:var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Loading / gate states -->
+  <div class="gate" id="loading"><p>Loading…</p></div>
+
+  <div class="gate hidden" id="needLogin">
+    <h2>Please log in</h2>
+    <p>You need an account to use CreatorScout.</p>
+    <a href="index.html"><button class="btn">Go to login</button></a>
+  </div>
+
+  <div class="gate hidden" id="trialOver">
+    <h2>Your trial has ended</h2>
+    <p>Your 1-day free trial is over. Upgrade to Pro ($8/month) to keep finding creators.</p>
+    <button class="btn" onclick="alert('Payment coming soon — Pro plan will be available shortly.')">Upgrade to Pro — $8/mo</button>
+    <div style="margin-top:14px;"><button class="btn-ghost" onclick="logout()">Log out</button></div>
+  </div>
+
+  <!-- The actual app -->
+  <div id="app" class="hidden">
+    <div class="topbar">
+      <div class="brand"><span class="grad">CreatorScout</span></div>
+      <div class="userbox">
+        <span id="who"></span>
+        <span class="pill" id="planPill"></span>
+        <button class="btn-ghost" onclick="logout()">Log out</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>01 — Your API key</h2>
+      <div class="field">
+        <label for="key">YouTube Data API v3 key</label>
+        <input id="key" type="password" placeholder="AIza..." autocomplete="off">
+        <p class="hint">Your key stays in your browser and is sent only to YouTube. <a href="https://console.cloud.google.com/" target="_blank" rel="noopener">Get a free key</a>.</p>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>02 — Search</h2>
+      <div class="field">
+        <label for="kw">Keywords (comma separated)</label>
+        <textarea id="kw">daily vlog, tech review, fitness, cooking, finance tips</textarea>
+      </div>
+      <div class="grid4">
+        <div class="field"><label for="subs">Min subscribers</label><input id="subs" type="number" value="200000"></div>
+        <div class="field"><label for="maxsubs">Max subscribers</label><input id="maxsubs" type="number" value="5000000"></div>
+        <div class="field"><label for="views">Min recent views</label><input id="views" type="number" value="100000"></div>
+        <div class="field"><label for="per">Scan per keyword</label><input id="per" type="number" value="50" max="100"></div>
+      </div>
+      <button class="btn" id="go" onclick="run()"><span id="go-label">Find creators</span></button>
+      <div class="status" id="status"></div>
+    </div>
+
+    <div class="results" id="results">
+      <div class="results-head">
+        <div class="count"><b id="rcount">0</b> creators found</div>
+        <button class="btn-ghost" onclick="exportXlsx()">⬇ Export to Excel</button>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead><tr>
+            <th>#</th><th>Channel</th><th>Link</th><th class="num">Subscribers</th>
+            <th class="num">Top recent views</th><th class="num">Videos</th><th>Email</th><th>Keyword</th>
+          </tr></thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ====== SUPABASE CONFIG — apni values yahan daalo (index.html jaisi same) ======
+const SUPABASE_URL = "https://fosonevnuvcmrmqgsceh.supabase.co/rest/v1/";
+const SUPABASE_ANON_KEY = "sb_publishable_0Fqyk60LGARz_lUjlYX78w_3gcwYcIr";
+// ==============================================================================
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const $ = id => document.getElementById(id);
+function showOnly(id) {
+  ["loading","needLogin","trialOver","app"].forEach(x => $(x).classList.add("hidden"));
+  $(id).classList.remove("hidden");
+}
+
+// ---- Auth + trial gate ----
+(async () => {
+  const { data: sess } = await sb.auth.getSession();
+  if (!sess.session) { showOnly("needLogin"); return; }
+  const user = sess.session.user;
+
+  const { data: profile, error } = await sb.from("profiles").select("*").eq("id", user.id).single();
+  if (error || !profile) {
+    // profile missing — allow but show as trial
+    $("who").textContent = user.email;
+    $("planPill").textContent = "trial";
+    showOnly("app"); return;
+  }
+
+  const now = new Date();
+  const trialEnds = profile.trial_ends ? new Date(profile.trial_ends) : null;
+  const isPaid = profile.plan === "pro" || profile.plan === "paid";
+  const trialActive = trialEnds && now < trialEnds;
+
+  if (!isPaid && !trialActive) { showOnly("trialOver"); return; }
+
+  $("who").textContent = user.email;
+  if (isPaid) { $("planPill").textContent = "pro"; }
+  else {
+    const hrs = Math.max(0, Math.round((trialEnds - now) / 3600000));
+    $("planPill").textContent = "trial · " + hrs + "h left";
+  }
+  showOnly("app");
+})();
+
+async function logout() {
+  await sb.auth.signOut();
+  window.location.href = "index.html";
+}
+
+// ---- YouTube search logic ----
+const BASE = "https://www.googleapis.com/youtube/v3";
+const MUSIC_SIGNALS = ["vevo","official artist","- topic","official music","records","music video","lyrics","album","mixtape","beats","instrumental","audio library","no copyright music","ncs","remix","dj ","soundtrack","official audio"];
+const MUSIC_CATEGORY_ID = "10";
+const EMAIL_RE = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
+let lastResults = [];
+function fmt(n){ return Number(n).toLocaleString(); }
+function setStatus(html,cls){ const s=$("status"); s.innerHTML=html; s.className="status"+(cls?" "+cls:""); }
+function esc(s){ return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+async function apiGet(endpoint,params,key){ params.key=key; const url=BASE+"/"+endpoint+"?"+new URLSearchParams(params).toString(); const r=await fetch(url); if(!r.ok){const body=await r.text(); throw{status:r.status,body};} return r.json(); }
+function isEnglishText(t){ if(!t)return true; const L=[...t].filter(c=>/\p{L}/u.test(c)); if(!L.length)return true; return L.filter(c=>c.charCodeAt(0)<128).length/L.length>=0.8; }
+function looksLikeMusic(ch){ const b=(ch.snippet.title+" "+(ch.snippet.description||"")).toLowerCase(); return MUSIC_SIGNALS.some(s=>b.includes(s)); }
+function extractEmail(d){ const m=(d||"").match(EMAIL_RE); return m?m[0]:""; }
+async function searchChannels(kw,max,key){ let out=[],tok=null,f=0; while(f<max){ const p={part:"snippet",q:kw,type:"channel",maxResults:Math.min(50,max-f),relevanceLanguage:"en"}; if(tok)p.pageToken=tok; const d=await apiGet("search",p,key); if(!d.items)break; out.push(...d.items.map(i=>i.snippet.channelId)); f+=d.items.length; tok=d.nextPageToken; if(!tok)break; } return out; }
+async function getChannelStats(ids,key){ const res={}; for(let i=0;i<ids.length;i+=50){ const d=await apiGet("channels",{part:"snippet,statistics,contentDetails",id:ids.slice(i,i+50).join(",")},key); if(d.items)for(const it of d.items)res[it.id]=it; } return res; }
+async function recentInfo(pl,key){ const d=await apiGet("playlistItems",{part:"contentDetails",playlistId:pl,maxResults:5},key); if(!d.items||!d.items.length)return{mx:0,music:false,audioEn:true}; const vids=d.items.map(it=>it.contentDetails.videoId); const v=await apiGet("videos",{part:"statistics,snippet",id:vids.join(",")},key); if(!v.items)return{mx:0,music:false,audioEn:true}; let mx=0,music=0,audioEn=true; for(const x of v.items){ mx=Math.max(mx,parseInt(x.statistics?.viewCount||0)); if(x.snippet.categoryId===MUSIC_CATEGORY_ID)music++; for(const k of ["defaultAudioLanguage","defaultLanguage"]){const lang=x.snippet[k]||""; if(lang&&!lang.toLowerCase().startsWith("en"))audioEn=false;} } return {mx,music:music>=Math.max(1,Math.floor(v.items.length/2)),audioEn}; }
+
+async function run(){
+  const apiKey=$("key").value.trim();
+  const keywords=$("kw").value.split(",").map(k=>k.trim()).filter(Boolean);
+  const MIN_SUBS=parseInt($("subs").value)||0;
+  const MAX_SUBS=parseInt($("maxsubs").value)||Number.MAX_SAFE_INTEGER;
+  const MIN_VIEWS=parseInt($("views").value)||0;
+  const PER=Math.min(parseInt($("per").value)||50,100);
+  if(!apiKey){setStatus("Enter your API key first.","err");return;}
+  if(!keywords.length){setStatus("Enter at least one keyword.","err");return;}
+  if(MAX_SUBS<MIN_SUBS){setStatus("Max subscribers must be greater than min.","err");return;}
+  $("go").disabled=true; $("go-label").textContent="Searching…";
+  setStatus('<span class="spinner"></span>Scanning '+keywords.length+' keyword(s)…');
+  const seen=new Set(); const qualified=[];
+  try{
+    for(const kw of keywords){
+      let cids=await searchChannels(kw,PER,apiKey);
+      cids=cids.filter(c=>!seen.has(c)); cids.forEach(c=>seen.add(c));
+      const stats=await getChannelStats(cids,apiKey);
+      for(const cid of Object.keys(stats)){
+        const ch=stats[cid]; const s=ch.snippet;
+        const subs=parseInt(ch.statistics?.subscriberCount||0);
+        if(subs<MIN_SUBS||subs>MAX_SUBS)continue;
+        if(!(isEnglishText(s.title)&&isEnglishText(s.description)))continue;
+        const dl=s.defaultLanguage||""; if(dl&&!dl.toLowerCase().startsWith("en"))continue;
+        if(looksLikeMusic(ch))continue;
+        const up=ch.contentDetails?.relatedPlaylists?.uploads; if(!up)continue;
+        const {mx,music,audioEn}=await recentInfo(up,apiKey);
+        if(music||mx<MIN_VIEWS||!audioEn)continue;
+        const handle=s.customUrl||"";
+        qualified.push({name:s.title,link:"https://www.youtube.com/channel/"+cid,handle:handle?"https://www.youtube.com/"+handle:"",subs,totalViews:parseInt(ch.statistics?.viewCount||0),videos:parseInt(ch.statistics?.videoCount||0),topRecentViews:mx,email:extractEmail(s.description),country:s.country||"",keyword:kw});
+      }
+    }
+  }catch(e){
+    if(e.status===403){setStatus("API key invalid ya daily quota khatam. Kal try karein ya nayi key banayein.","err");}
+    else{setStatus("Search failed: "+(e.body||e.message||"unknown"),"err");}
+    $("go").disabled=false; $("go-label").textContent="Find creators"; return;
+  }
+  const uniq={}; for(const q of qualified)uniq[q.link]=q;
+  lastResults=Object.values(uniq).sort((a,b)=>b.subs-a.subs);
+  render(lastResults);
+  setStatus(lastResults.length?"Done — "+lastResults.length+" creators found.":"No creators matched. Try broader keywords or widen filters.",lastResults.length?"ok":"err");
+  $("go").disabled=false; $("go-label").textContent="Find creators";
+}
+function render(rows){
+  const tb=$("tbody"); tb.innerHTML="";
+  rows.forEach((r,i)=>{ const tr=document.createElement("tr");
+    tr.innerHTML='<td class="muted-cell">'+(i+1)+'</td><td class="name">'+esc(r.name)+'</td><td><a href="'+r.link+'" target="_blank" rel="noopener">open ↗</a></td><td class="num">'+fmt(r.subs)+'</td><td class="num">'+fmt(r.topRecentViews)+'</td><td class="num">'+fmt(r.videos)+'</td><td class="muted-cell">'+(r.email?esc(r.email):"—")+'</td><td class="muted-cell">'+esc(r.keyword)+'</td>';
+    tb.appendChild(tr); });
+  $("rcount").textContent=rows.length; $("results").classList.add("show");
+}
+function exportXlsx(){
+  if(!lastResults.length)return;
+  const data=lastResults.map((r,i)=>({"#":i+1,"Channel Name":r.name,"Channel Link":r.link,"Handle URL":r.handle,"Subscribers":r.subs,"Total Views":r.totalViews,"Video Count":r.videos,"Top Recent Views":r.topRecentViews,"Email":r.email,"Country":r.country,"Keyword":r.keyword}));
+  const ws=XLSX.utils.json_to_sheet(data);
+  ws["!cols"]=[{wch:4},{wch:30},{wch:48},{wch:44},{wch:13},{wch:15},{wch:11},{wch:17},{wch:28},{wch:9},{wch:18}];
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"Creators");
+  const stamp=new Date().toISOString().slice(0,16).replace(/[-:T]/g,"");
+  XLSX.writeFile(wb,"creatorscout_"+stamp+".xlsx");
+}
+</script>
+</body>
+</html>
