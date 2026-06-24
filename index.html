@@ -3,300 +3,194 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CreatorScout — YouTube channel discovery</title>
+<title>CreatorScout — find YouTube creators that fit</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
-    --bg: #0e0f13; --panel: #16181f; --panel-2: #1c1f28; --line: #2a2e3a;
-    --ink: #f2f3f7; --muted: #8b90a0; --accent: #ff3b30; --accent-soft: #ff3b3022;
-    --ok: #34d399; --radius: 14px;
+    --bg:#0b0f1a; --bg-2:#0f1422; --panel:#141a2b; --panel-2:#1b2236; --line:#283150;
+    --ink:#eef1f8; --muted:#8a93ad; --muted-2:#5f6680;
+    --amber:#f5b14c; --amber-soft:#f5b14c1f; --amber-line:#f5b14c55;
+    --teal:#2dd4bf; --ok:#34d399; --err:#fb7185; --radius:16px;
   }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--bg); color: var(--ink); font-family: 'Space Grotesk', system-ui, sans-serif;
-    line-height: 1.5; min-height: 100vh; padding: 32px 20px 80px; }
-  .wrap { max-width: 1040px; margin: 0 auto; }
-  header { margin-bottom: 28px; }
-  .badge { display: inline-flex; align-items: center; gap: 8px; font-family: 'JetBrains Mono', monospace;
-    font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent);
-    background: var(--accent-soft); border: 1px solid var(--accent); border-radius: 100px;
-    padding: 5px 12px; margin-bottom: 16px; }
-  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
-  h1 { font-size: clamp(28px, 5vw, 44px); font-weight: 700; letter-spacing: -0.02em; line-height: 1.05; }
-  h1 .thin { color: var(--muted); font-weight: 400; }
-  .sub { color: var(--muted); margin-top: 10px; max-width: 580px; }
-  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
-    padding: 22px; margin-top: 22px; }
-  .panel h2 { font-size: 13px; font-family: 'JetBrains Mono', monospace; text-transform: uppercase;
-    letter-spacing: 0.08em; color: var(--muted); margin-bottom: 16px; font-weight: 500; }
-  label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
-  input, textarea { width: 100%; background: var(--panel-2); border: 1px solid var(--line);
-    color: var(--ink); border-radius: 10px; padding: 11px 13px; font-family: 'JetBrains Mono', monospace;
-    font-size: 14px; transition: border-color .15s; }
-  input:focus, textarea:focus { outline: none; border-color: var(--accent); }
-  textarea { resize: vertical; min-height: 64px; }
-  .field { margin-bottom: 16px; }
-  .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
-  .hint a { color: var(--accent); }
-  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-  @media (max-width: 640px) { .grid3 { grid-template-columns: 1fr; } }
-  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 9px;
-    background: var(--accent); color: #fff; border: none; border-radius: 10px; padding: 13px 22px;
-    font-size: 15px; font-weight: 600; font-family: 'Space Grotesk', sans-serif; cursor: pointer;
-    transition: transform .08s, opacity .15s; width: 100%; }
-  .btn:hover { opacity: .92; }
-  .btn:active { transform: translateY(1px); }
-  .btn:disabled { opacity: .5; cursor: not-allowed; }
-  .btn-ghost { background: transparent; border: 1px solid var(--line); color: var(--ink); width: auto; }
-  .status { margin-top: 16px; font-family: 'JetBrains Mono', monospace; font-size: 13px; min-height: 20px; }
-  .status.err { color: var(--accent); }
-  .status.ok { color: var(--ok); }
-  .spinner { display: inline-block; width: 13px; height: 13px; border: 2px solid var(--muted);
-    border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite;
-    vertical-align: middle; margin-right: 7px; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .results { margin-top: 22px; display: none; }
-  .results.show { display: block; }
-  .results-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; flex-wrap: wrap; gap: 12px; }
-  .count { font-family: 'JetBrains Mono', monospace; }
-  .count b { color: var(--accent); font-size: 22px; }
-  .table-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th { text-align: left; padding: 12px 14px; background: var(--panel-2); font-family: 'JetBrains Mono', monospace;
-    font-weight: 500; color: var(--muted); text-transform: uppercase; font-size: 11px; letter-spacing: 0.06em;
-    border-bottom: 1px solid var(--line); white-space: nowrap; }
-  td { padding: 11px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
-  tr:last-child td { border-bottom: none; }
-  tr:hover td { background: var(--panel-2); }
-  td a { color: var(--accent); text-decoration: none; }
-  td a:hover { text-decoration: underline; }
-  .num { font-family: 'JetBrains Mono', monospace; text-align: right; }
-  .name { font-weight: 600; }
-  .muted-cell { color: var(--muted); }
-  footer { margin-top: 40px; color: var(--muted); font-size: 12px; text-align: center; font-family: 'JetBrains Mono', monospace; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body {
+    background:
+      radial-gradient(1100px 500px at 80% -10%, #1a2340 0%, transparent 60%),
+      radial-gradient(900px 500px at 0% 0%, #14243a 0%, transparent 55%),
+      var(--bg);
+    color:var(--ink); font-family:'Sora',system-ui,sans-serif; line-height:1.55;
+    min-height:100vh; padding:32px 20px 90px;
+  }
+  .wrap { max-width:1060px; margin:0 auto; }
+  .badge { display:inline-flex; align-items:center; gap:8px; font-family:'JetBrains Mono',monospace;
+    font-size:12px; letter-spacing:.1em; text-transform:uppercase; color:var(--amber);
+    background:var(--amber-soft); border:1px solid var(--amber-line); border-radius:100px;
+    padding:6px 13px; margin-bottom:18px; }
+  .dot { width:7px; height:7px; border-radius:50%; background:var(--amber); box-shadow:0 0 10px var(--amber); }
+  h1 { font-size:clamp(32px,5.6vw,54px); font-weight:800; letter-spacing:-.025em; line-height:1.04; }
+  h1 .grad { background:linear-gradient(120deg,var(--amber),#ffd789); -webkit-background-clip:text;
+    background-clip:text; -webkit-text-fill-color:transparent; }
+  h1 .thin { color:var(--muted); font-weight:400; }
+  .sub { color:var(--muted); margin-top:12px; max-width:600px; font-size:16px; }
+
+  .cols { display:grid; grid-template-columns:1.15fr .85fr; gap:22px; margin-top:34px; align-items:start; }
+  @media (max-width:860px){ .cols{ grid-template-columns:1fr; } }
+
+  .how { display:grid; gap:12px; }
+  .step { background:linear-gradient(180deg,var(--panel),var(--bg-2)); border:1px solid var(--line);
+    border-radius:var(--radius); padding:18px; }
+  .step .n { font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--amber);
+    border:1px solid var(--amber-line); border-radius:7px; padding:2px 8px; display:inline-block; margin-bottom:10px; }
+  .step h3 { font-size:15px; font-weight:600; margin-bottom:4px; }
+  .step p { font-size:13.5px; color:var(--muted); }
+
+  .auth { background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:24px; position:sticky; top:24px; }
+  .tabs { display:flex; gap:8px; margin-bottom:20px; background:var(--bg-2); padding:5px; border-radius:11px; }
+  .tab { flex:1; text-align:center; padding:9px; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; color:var(--muted); border:none; background:transparent; font-family:'Sora',sans-serif; }
+  .tab.active { background:var(--panel-2); color:var(--ink); }
+  label { display:block; font-size:13px; color:var(--muted); margin-bottom:7px; }
+  input { width:100%; background:var(--panel-2); border:1px solid var(--line); color:var(--ink);
+    border-radius:11px; padding:12px 14px; font-family:'JetBrains Mono',monospace; font-size:14px; transition:border-color .15s, box-shadow .15s; }
+  input:focus { outline:none; border-color:var(--amber-line); box-shadow:0 0 0 3px var(--amber-soft); }
+  .field { margin-bottom:16px; }
+  .btn { display:flex; align-items:center; justify-content:center; gap:9px;
+    background:linear-gradient(120deg,var(--amber),#ffc868); color:#1a1205; border:none;
+    border-radius:11px; padding:14px 22px; font-size:15px; font-weight:700; font-family:'Sora',sans-serif;
+    cursor:pointer; transition:transform .08s, box-shadow .15s; width:100%; box-shadow:0 6px 20px -8px var(--amber); }
+  .btn:hover { box-shadow:0 8px 26px -6px var(--amber); }
+  .btn:active { transform:translateY(1px); }
+  .btn:disabled { opacity:.55; cursor:not-allowed; box-shadow:none; }
+  .msg { margin-top:14px; font-family:'JetBrains Mono',monospace; font-size:13px; min-height:18px; }
+  .msg.err { color:var(--err); }
+  .msg.ok { color:var(--ok); }
+  .trial-note { font-size:12px; color:var(--muted); margin-top:14px; text-align:center; }
+
+  /* pricing */
+  .pricing { margin-top:48px; }
+  .pricing h2 { font-size:24px; font-weight:700; margin-bottom:6px; }
+  .pricing .ph-sub { color:var(--muted); margin-bottom:24px; }
+  .plans { display:grid; grid-template-columns:1fr 1fr; gap:18px; max-width:680px; }
+  @media (max-width:680px){ .plans{ grid-template-columns:1fr; } }
+  .plan { background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:24px; }
+  .plan.pro { border-color:var(--amber-line); box-shadow:0 0 0 1px var(--amber-line), 0 10px 40px -20px var(--amber); }
+  .plan .pname { font-family:'JetBrains Mono',monospace; font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin-bottom:14px; }
+  .plan.pro .pname { color:var(--amber); }
+  .price { font-size:38px; font-weight:800; letter-spacing:-.02em; }
+  .price .cut { font-size:20px; color:var(--muted-2); text-decoration:line-through; margin-right:10px; font-weight:600; }
+  .price small { font-size:14px; color:var(--muted); font-weight:400; }
+  .plan ul { list-style:none; margin:18px 0; }
+  .plan li { font-size:14px; color:var(--muted); padding:7px 0 7px 24px; position:relative; }
+  .plan li::before { content:"✓"; position:absolute; left:0; color:var(--amber); font-weight:700; }
+  footer { margin-top:50px; color:var(--muted-2); font-size:12px; text-align:center; font-family:'JetBrains Mono',monospace; }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <header>
-    <div class="badge"><span class="dot"></span> youtube discovery</div>
-    <h1>CreatorScout <span class="thin">/ find channels that fit</span></h1>
-    <p class="sub">Search YouTube for real, English-voice creators by topic. Filter by subscribers and recent views, skip music and verified mega-channels, and export the whole list to Excel.</p>
-  </header>
+  <div class="badge"><span class="dot"></span> youtube discovery</div>
+  <h1><span class="grad">CreatorScout</span> <span class="thin">/ find channels that fit</span></h1>
+  <p class="sub">Discover real, English-voice YouTube creators by topic. Filter by subscriber range and recent views, skip music and mega-channels, then export the whole list to Excel for outreach.</p>
 
-  <div class="panel">
-    <h2>01 — Your API key</h2>
-    <div class="field">
-      <label for="key">YouTube Data API v3 key</label>
-      <input id="key" type="password" placeholder="AIza..." autocomplete="off">
-      <p class="hint">Your key stays in your browser and is sent only to YouTube. Don't have one? <a href="https://console.cloud.google.com/" target="_blank" rel="noopener">Get a free key</a> — enable "YouTube Data API v3", then create an API key.</p>
+  <div class="cols">
+    <div class="how">
+      <div class="step"><span class="n">step 1</span><h3>Create your account</h3><p>Sign up free and start a 1-day trial instantly — no card needed to try it.</p></div>
+      <div class="step"><span class="n">step 2</span><h3>Search by topic</h3><p>Enter keywords, set subscriber range and minimum views. We skip music and verified mega-channels automatically.</p></div>
+      <div class="step"><span class="n">step 3</span><h3>Export to Excel</h3><p>Get a clean list — names, links, subscribers, views and public emails — ready to download.</p></div>
+    </div>
+
+    <div class="auth">
+      <div class="tabs">
+        <button class="tab active" id="tab-login" onclick="showTab('login')">Log in</button>
+        <button class="tab" id="tab-signup" onclick="showTab('signup')">Sign up</button>
+      </div>
+      <div class="field"><label for="email">Email</label><input id="email" type="email" placeholder="you@email.com" autocomplete="email"></div>
+      <div class="field"><label for="password">Password</label><input id="password" type="password" placeholder="••••••••" autocomplete="current-password"></div>
+      <button class="btn" id="authBtn" onclick="doAuth()"><span id="authLabel">Log in</span></button>
+      <div class="msg" id="msg"></div>
+      <p class="trial-note" id="trialNote" style="display:none;">New accounts get a free 1-day trial.</p>
     </div>
   </div>
 
-  <div class="panel">
-    <h2>02 — Search</h2>
-    <div class="field">
-      <label for="kw">Keywords (comma separated)</label>
-      <textarea id="kw" placeholder="vlogs, tech review, fitness, cooking, finance tips">daily vlog, tech review, fitness, cooking, finance tips</textarea>
+  <section class="pricing">
+    <h2>Simple pricing</h2>
+    <p class="ph-sub">Start with a 1-day free trial. Upgrade when you're ready.</p>
+    <div class="plans">
+      <div class="plan">
+        <div class="pname">Free trial</div>
+        <div class="price">$0 <small>/ 1 day</small></div>
+        <ul>
+          <li>Full access for 24 hours</li>
+          <li>Unlimited searches (within your API quota)</li>
+          <li>Excel export</li>
+          <li>No card required</li>
+        </ul>
+      </div>
+      <div class="plan pro">
+        <div class="pname">Pro</div>
+        <div class="price"><span class="cut">$15</span>$8 <small>/ month</small></div>
+        <ul>
+          <li>Everything in trial, unlimited</li>
+          <li>Subscriber range + advanced filters</li>
+          <li>Priority email support</li>
+          <li>Cancel anytime</li>
+        </ul>
+      </div>
     </div>
-    <div class="grid3">
-      <div class="field"><label for="subs">Min subscribers</label><input id="subs" type="number" value="200000"></div>
-      <div class="field"><label for="views">Min recent views</label><input id="views" type="number" value="100000"></div>
-      <div class="field"><label for="per">Scan per keyword</label><input id="per" type="number" value="50" max="100"></div>
-    </div>
-    <button class="btn" id="go"><span id="go-label">Find creators</span></button>
-    <div class="status" id="status"></div>
-  </div>
+  </section>
 
-  <div class="results" id="results">
-    <div class="results-head">
-      <div class="count"><b id="rcount">0</b> creators found</div>
-      <button class="btn btn-ghost" id="export">⬇ Export to Excel</button>
-    </div>
-    <div class="table-scroll">
-      <table id="tbl">
-        <thead><tr>
-          <th>#</th><th>Channel</th><th>Link</th><th class="num">Subscribers</th>
-          <th class="num">Top recent views</th><th class="num">Videos</th><th>Email</th><th>Keyword</th>
-        </tr></thead>
-        <tbody id="tbody"></tbody>
-      </table>
-    </div>
-  </div>
-
-  <footer>Results depend on YouTube's data. Voice language is estimated from channel metadata, not audio.</footer>
+  <footer>Voice language is estimated from channel metadata, not audio, so it isn't 100% exact.</footer>
 </div>
 
 <script>
-const $ = id => document.getElementById(id);
-const BASE = "https://www.googleapis.com/youtube/v3";
-const MUSIC_SIGNALS = ["vevo","official artist","- topic","official music","records","music video",
-  "lyrics","album","mixtape","beats","instrumental","audio library","no copyright music","ncs",
-  "remix","dj ","soundtrack","official audio"];
-const MUSIC_CATEGORY_ID = "10";
-const EMAIL_RE = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
-let lastResults = [];
+// ====== SUPABASE CONFIG — apni values yahan daalo ======
+const SUPABASE_URL = "https://fosonevnuvcmrmqgsceh.supabase.co/rest/v1/";
+const SUPABASE_ANON_KEY = "sb_publishable_0Fqyk60LGARz_lUjlYX78w_3gcwYcIr";
+// =======================================================
 
-function fmt(n) { return Number(n).toLocaleString(); }
-function setStatus(html, cls) { const s = $("status"); s.innerHTML = html; s.className = "status" + (cls ? " " + cls : ""); }
-function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c])); }
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let mode = "login";
 
-async function apiGet(endpoint, params, key) {
-  params.key = key;
-  const url = BASE + "/" + endpoint + "?" + new URLSearchParams(params).toString();
-  const r = await fetch(url);
-  if (!r.ok) { const body = await r.text(); throw { status: r.status, body }; }
-  return r.json();
+function showTab(m) {
+  mode = m;
+  document.getElementById("tab-login").classList.toggle("active", m === "login");
+  document.getElementById("tab-signup").classList.toggle("active", m === "signup");
+  document.getElementById("authLabel").textContent = m === "login" ? "Log in" : "Create account & start trial";
+  document.getElementById("trialNote").style.display = m === "signup" ? "block" : "none";
+  setMsg("");
 }
-function isEnglishText(text) {
-  if (!text) return true;
-  const letters = [...text].filter(c => /\p{L}/u.test(c));
-  if (!letters.length) return true;
-  return letters.filter(c => c.charCodeAt(0) < 128).length / letters.length >= 0.8;
-}
-function looksLikeMusic(ch) {
-  const blob = (ch.snippet.title + " " + (ch.snippet.description || "")).toLowerCase();
-  return MUSIC_SIGNALS.some(s => blob.includes(s));
-}
-function extractEmail(desc) { const m = (desc || "").match(EMAIL_RE); return m ? m[0] : ""; }
+function setMsg(t, cls) { const m = document.getElementById("msg"); m.textContent = t; m.className = "msg" + (cls ? " " + cls : ""); }
 
-async function searchChannels(keyword, maxResults, key) {
-  let out = [], token = null, fetched = 0;
-  while (fetched < maxResults) {
-    const params = { part: "snippet", q: keyword, type: "channel",
-      maxResults: Math.min(50, maxResults - fetched), relevanceLanguage: "en" };
-    if (token) params.pageToken = token;
-    const d = await apiGet("search", params, key);
-    if (!d.items) break;
-    out.push(...d.items.map(i => i.snippet.channelId));
-    fetched += d.items.length; token = d.nextPageToken;
-    if (!token) break;
-  }
-  return out;
-}
-async function getChannelStats(ids, key) {
-  const res = {};
-  for (let i = 0; i < ids.length; i += 50) {
-    const d = await apiGet("channels", { part: "snippet,statistics,contentDetails",
-      id: ids.slice(i, i + 50).join(",") }, key);
-    if (d.items) for (const it of d.items) res[it.id] = it;
-  }
-  return res;
-}
-async function recentInfo(playlist, key) {
-  const d = await apiGet("playlistItems", { part: "contentDetails", playlistId: playlist, maxResults: 5 }, key);
-  if (!d.items || !d.items.length) return { mx: 0, music: false, audioEn: true };
-  const vids = d.items.map(it => it.contentDetails.videoId);
-  const v = await apiGet("videos", { part: "statistics,snippet", id: vids.join(",") }, key);
-  if (!v.items) return { mx: 0, music: false, audioEn: true };
-  let mx = 0, music = 0, audioEn = true;
-  for (const x of v.items) {
-    mx = Math.max(mx, parseInt(x.statistics?.viewCount || 0));
-    if (x.snippet.categoryId === MUSIC_CATEGORY_ID) music++;
-    for (const k of ["defaultAudioLanguage","defaultLanguage"]) {
-      const lang = x.snippet[k] || "";
-      if (lang && !lang.toLowerCase().startsWith("en")) audioEn = false;
-    }
-  }
-  return { mx, music: music >= Math.max(1, Math.floor(v.items.length / 2)), audioEn };
-}
+async function doAuth() {
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value;
+  if (!email || !password) { setMsg("Email aur password dono daalein.", "err"); return; }
+  const btn = document.getElementById("authBtn");
+  btn.disabled = true;
+  setMsg(mode === "login" ? "Logging in…" : "Creating account…");
 
-async function run() {
-  const apiKey = $("key").value.trim();
-  const keywords = $("kw").value.split(",").map(k => k.trim()).filter(Boolean);
-  const MIN_SUBS = parseInt($("subs").value) || 200000;
-  const MIN_VIEWS = parseInt($("views").value) || 100000;
-  const PER_KEYWORD = Math.min(parseInt($("per").value) || 50, 100);
-  const VERIFIED_CEILING = 5000000;
-
-  if (!apiKey) { setStatus("Enter your API key first.", "err"); return; }
-  if (!keywords.length) { setStatus("Enter at least one keyword.", "err"); return; }
-
-  $("go").disabled = true; $("go-label").textContent = "Searching…";
-  setStatus('<span class="spinner"></span>Scanning ' + keywords.length + ' keyword(s). This can take a minute…');
-
-  const seen = new Set();
-  const qualified = [];
   try {
-    for (const kw of keywords) {
-      let cids = await searchChannels(kw, PER_KEYWORD, apiKey);
-      cids = cids.filter(c => !seen.has(c));
-      cids.forEach(c => seen.add(c));
-      const stats = await getChannelStats(cids, apiKey);
-      for (const cid of Object.keys(stats)) {
-        const ch = stats[cid]; const s = ch.snippet;
-        const subs = parseInt(ch.statistics?.subscriberCount || 0);
-        if (subs < MIN_SUBS) continue;
-        if (subs >= VERIFIED_CEILING) continue;
-        if (!(isEnglishText(s.title) && isEnglishText(s.description))) continue;
-        const dl = s.defaultLanguage || "";
-        if (dl && !dl.toLowerCase().startsWith("en")) continue;
-        if (looksLikeMusic(ch)) continue;
-        const uploads = ch.contentDetails?.relatedPlaylists?.uploads;
-        if (!uploads) continue;
-        const { mx, music, audioEn } = await recentInfo(uploads, apiKey);
-        if (music || mx < MIN_VIEWS || !audioEn) continue;
-        const handle = s.customUrl || "";
-        qualified.push({
-          name: s.title, link: "https://www.youtube.com/channel/" + cid,
-          handle: handle ? "https://www.youtube.com/" + handle : "",
-          subs, totalViews: parseInt(ch.statistics?.viewCount || 0),
-          videos: parseInt(ch.statistics?.videoCount || 0), topRecentViews: mx,
-          email: extractEmail(s.description), country: s.country || "", keyword: kw,
-        });
-      }
+    let res;
+    if (mode === "signup") {
+      res = await sb.auth.signUp({ email, password });
+    } else {
+      res = await sb.auth.signInWithPassword({ email, password });
     }
+    if (res.error) { setMsg(res.error.message, "err"); btn.disabled = false; return; }
+    setMsg("Success! Redirecting…", "ok");
+    window.location.href = "app.html";
   } catch (e) {
-    if (e.status === 403) { setStatus("API key galat hai ya daily quota khatam. Kal try karein ya nayi key banayein.", "err"); }
-    else { setStatus("Search failed: " + (e.body || e.message || "unknown"), "err"); }
-    $("go").disabled = false; $("go-label").textContent = "Find creators"; return;
+    setMsg("Error: " + e.message, "err");
+    btn.disabled = false;
   }
-
-  const uniq = {}; for (const q of qualified) uniq[q.link] = q;
-  lastResults = Object.values(uniq).sort((a, b) => b.subs - a.subs);
-  render(lastResults);
-  setStatus(lastResults.length ? "Done — " + lastResults.length + " creators found." : "No creators matched. Try broader keywords or lower the view threshold.", lastResults.length ? "ok" : "err");
-  $("go").disabled = false; $("go-label").textContent = "Find creators";
 }
 
-function render(rows) {
-  const tb = $("tbody"); tb.innerHTML = "";
-  rows.forEach((r, i) => {
-    const tr = document.createElement("tr");
-    tr.innerHTML =
-      '<td class="muted-cell">' + (i + 1) + '</td>' +
-      '<td class="name">' + esc(r.name) + '</td>' +
-      '<td><a href="' + r.link + '" target="_blank" rel="noopener">open ↗</a></td>' +
-      '<td class="num">' + fmt(r.subs) + '</td>' +
-      '<td class="num">' + fmt(r.topRecentViews) + '</td>' +
-      '<td class="num">' + fmt(r.videos) + '</td>' +
-      '<td class="muted-cell">' + (r.email ? esc(r.email) : "—") + '</td>' +
-      '<td class="muted-cell">' + esc(r.keyword) + '</td>';
-    tb.appendChild(tr);
-  });
-  $("rcount").textContent = rows.length;
-  $("results").classList.add("show");
-}
-
-function exportXlsx() {
-  if (!lastResults.length) return;
-  const data = lastResults.map((r, i) => ({
-    "#": i + 1, "Channel Name": r.name, "Channel Link": r.link, "Handle URL": r.handle,
-    "Subscribers": r.subs, "Total Views": r.totalViews, "Video Count": r.videos,
-    "Top Recent Views": r.topRecentViews, "Email": r.email, "Country": r.country, "Keyword": r.keyword,
-  }));
-  const ws = XLSX.utils.json_to_sheet(data);
-  ws["!cols"] = [{wch:4},{wch:30},{wch:48},{wch:44},{wch:13},{wch:15},{wch:11},{wch:17},{wch:28},{wch:9},{wch:18}];
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Creators");
-  const stamp = new Date().toISOString().slice(0,16).replace(/[-:T]/g,"");
-  XLSX.writeFile(wb, "creatorscout_" + stamp + ".xlsx");
-}
-
-$("go").addEventListener("click", run);
-$("export").addEventListener("click", exportXlsx);
+// agar pehle se logged in hai to seedha app par bhej do
+(async () => {
+  const { data } = await sb.auth.getSession();
+  if (data.session) window.location.href = "app.html";
+})();
 </script>
 </body>
 </html>
