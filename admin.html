@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CreatorScout — Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --bg:#0b0f1a; --bg-2:#0f1422; --panel:#141a2b; --panel-2:#1b2236; --line:#283150;
+    --ink:#eef1f8; --muted:#8a93ad; --muted-2:#5f6680;
+    --amber:#f5b14c; --amber-soft:#f5b14c1f; --amber-line:#f5b14c55;
+    --ok:#34d399; --err:#fb7185; --radius:16px;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:
+      radial-gradient(1200px 600px at 85% -15%, #20294a 0%, transparent 58%),
+      radial-gradient(1000px 600px at -5% 5%, #15273f 0%, transparent 55%),
+      var(--bg); color:var(--ink); font-family:'Sora',system-ui,sans-serif; line-height:1.55; min-height:100vh; padding:32px 20px 90px; }
+  .wrap { max-width:1060px; margin:0 auto; }
+  .gate { max-width:480px; margin:80px auto; text-align:center; background:linear-gradient(180deg,var(--panel),var(--bg-2)); border:1px solid var(--line); border-radius:var(--radius); padding:40px 36px; }
+  .gate h2 { font-size:22px; margin-bottom:10px; }
+  .gate p { color:var(--muted); margin-bottom:22px; }
+  .hidden { display:none; }
+  .topbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; flex-wrap:wrap; gap:12px; }
+  .brand { font-weight:800; font-size:22px; }
+  .brand .grad { background:linear-gradient(120deg,var(--amber),#ffd789); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+  .brand .tag { font-size:13px; color:var(--muted); font-weight:400; margin-left:8px; }
+  .userbox { display:flex; align-items:center; gap:14px; font-size:13px; color:var(--muted); font-family:'JetBrains Mono',monospace; }
+  .btn-ghost { background:transparent; border:1px solid var(--line); color:var(--ink); font-weight:600; font-size:13px; padding:8px 14px; border-radius:9px; cursor:pointer; font-family:'Sora',sans-serif; }
+  .btn-ghost:hover { border-color:var(--amber-line); }
+
+  .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:20px; }
+  @media (max-width:640px){ .stats{ grid-template-columns:1fr; } }
+  .stat { background:linear-gradient(180deg,var(--panel),#11172499); border:1px solid var(--line); border-radius:var(--radius); padding:20px; }
+  .stat .label { font-family:'JetBrains Mono',monospace; font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin-bottom:8px; }
+  .stat .val { font-size:30px; font-weight:800; color:var(--amber); }
+
+  .table-scroll { overflow-x:auto; border:1px solid var(--line); border-radius:var(--radius); }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th { text-align:left; padding:13px 15px; background:var(--panel-2); font-family:'JetBrains Mono',monospace; font-weight:500; color:var(--muted); text-transform:uppercase; font-size:11px; letter-spacing:.06em; border-bottom:1px solid var(--line); white-space:nowrap; }
+  td { padding:12px 15px; border-bottom:1px solid var(--line); vertical-align:middle; }
+  tr:last-child td { border-bottom:none; }
+  tr:hover td { background:var(--panel-2); }
+  .num { font-family:'JetBrains Mono',monospace; text-align:right; }
+  .muted-cell { color:var(--muted); }
+  .pill { padding:3px 9px; border-radius:100px; font-size:11px; font-family:'JetBrains Mono',monospace; }
+  .pill.trial { background:var(--amber-soft); color:var(--amber); border:1px solid var(--amber-line); }
+  .pill.pro { background:#34d39922; color:var(--ok); border:1px solid #34d39955; }
+  .pill.banned { background:#fb718522; color:var(--err); border:1px solid #fb718555; }
+  .act { display:flex; gap:6px; }
+  .mini { font-size:11px; padding:5px 10px; border-radius:8px; border:1px solid var(--line); background:transparent; color:var(--ink); cursor:pointer; font-family:'Sora',sans-serif; }
+  .mini:hover { border-color:var(--amber-line); }
+  .mini.danger { color:var(--err); border-color:#fb718555; }
+  .mini.danger:hover { background:#fb718522; }
+  .status { margin:14px 0; font-family:'JetBrains Mono',monospace; font-size:13px; min-height:18px; }
+  .status.err { color:var(--err); }
+  .status.ok { color:var(--ok); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="gate" id="loading"><p>Loading…</p></div>
+
+  <div class="gate hidden" id="denied">
+    <h2>Access denied</h2>
+    <p>This page is for admins only.</p>
+    <a href="app.html"><button class="btn-ghost">Back to app</button></a>
+  </div>
+
+  <div id="admin" class="hidden">
+    <div class="topbar">
+      <div class="brand"><span class="grad">CreatorScout</span><span class="tag">admin</span></div>
+      <div class="userbox">
+        <span id="who"></span>
+        <a href="app.html"><button class="btn-ghost">App</button></a>
+        <button class="btn-ghost" onclick="logout()">Log out</button>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="label">Total users</div><div class="val" id="sTotal">—</div></div>
+      <div class="stat"><div class="label">Total searches</div><div class="val" id="sSearches">—</div></div>
+      <div class="stat"><div class="label">Banned</div><div class="val" id="sBanned">—</div></div>
+    </div>
+
+    <div class="status" id="status"></div>
+
+    <div class="table-scroll">
+      <table>
+        <thead><tr>
+          <th>Email</th><th>Plan</th><th class="num">Searches</th><th>Trial ends</th><th>Joined</th><th>Actions</th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+// ====== SUPABASE CONFIG — apni values yahan daalo (baaki pages jaisi same) ======
+const SUPABASE_URL = "https://fosonevnuvcmrmqgsceh.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_0Fqyk60LGARz_lUjlYX78w_3gcwYcIr";
+// ==============================================================================
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const $ = id => document.getElementById(id);
+function showOnly(id){ ["loading","denied","admin"].forEach(x=>$(x).classList.add("hidden")); $(id).classList.remove("hidden"); }
+function setStatus(t,cls){ const s=$("status"); s.textContent=t; s.className="status"+(cls?" "+cls:""); }
+function esc(s){ return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function fmtDate(d){ if(!d)return "—"; const x=new Date(d); return x.toLocaleDateString(); }
+
+let myToken = null;
+
+(async () => {
+  const { data: sess } = await sb.auth.getSession();
+  if (!sess.session) { showOnly("denied"); return; }
+  myToken = sess.session.access_token;
+  const uid = sess.session.user.id;
+
+  // check admin
+  const { data: me } = await sb.from("profiles").select("is_admin,email").eq("id", uid).single();
+  if (!me || !me.is_admin) { showOnly("denied"); return; }
+  $("who").textContent = me.email;
+  showOnly("admin");
+  loadUsers();
+})();
+
+async function loadUsers() {
+  setStatus("Loading users…");
+  const { data, error } = await sb.from("profiles")
+    .select("id,email,plan,search_count,trial_ends,created_at,banned,is_admin")
+    .order("created_at", { ascending: false });
+  if (error) { setStatus("Failed to load: " + error.message, "err"); return; }
+
+  let totalSearch = 0, banned = 0;
+  data.forEach(u => { totalSearch += (u.search_count || 0); if (u.banned) banned++; });
+  $("sTotal").textContent = data.length;
+  $("sSearches").textContent = totalSearch.toLocaleString();
+  $("sBanned").textContent = banned;
+
+  const tb = $("tbody"); tb.innerHTML = "";
+  data.forEach(u => {
+    const planClass = u.banned ? "banned" : (u.plan === "pro" ? "pro" : "trial");
+    const planText = u.banned ? "banned" : (u.plan || "trial");
+    const tr = document.createElement("tr");
+    tr.innerHTML =
+      '<td>' + esc(u.email || "—") + (u.is_admin ? ' <span class="pill pro">admin</span>' : '') + '</td>' +
+      '<td><span class="pill ' + planClass + '">' + esc(planText) + '</span></td>' +
+      '<td class="num">' + (u.search_count || 0) + '</td>' +
+      '<td class="muted-cell">' + fmtDate(u.trial_ends) + '</td>' +
+      '<td class="muted-cell">' + fmtDate(u.created_at) + '</td>' +
+      '<td class="act">' +
+        (u.is_admin ? '<span class="muted-cell" style="font-size:11px;">—</span>' :
+          (u.banned
+            ? '<button class="mini" onclick="setBan(\'' + u.id + '\',false)">Unban</button>'
+            : '<button class="mini danger" onclick="setBan(\'' + u.id + '\',true)">Ban</button>') +
+          '<button class="mini danger" onclick="delUser(\'' + u.id + '\',\'' + esc(u.email) + '\')">Delete</button>'
+        ) +
+      '</td>';
+    tb.appendChild(tr);
+  });
+  setStatus("Showing " + data.length + " users.", "ok");
+}
+
+// Ban / unban: just flips the 'banned' flag (app.html checks this)
+async function setBan(id, val) {
+  setStatus(val ? "Banning…" : "Unbanning…");
+  const { error } = await sb.from("profiles").update({ banned: val }).eq("id", id);
+  if (error) { setStatus("Failed: " + error.message, "err"); return; }
+  loadUsers();
+}
+
+// Delete: calls a secure Edge Function (admin key stays on server)
+async function delUser(id, email) {
+  if (!confirm("Delete " + email + " permanently? This cannot be undone.")) return;
+  setStatus("Deleting…");
+  try {
+    const res = await fetch(SUPABASE_URL + "/functions/v1/delete-user", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + myToken },
+      body: JSON.stringify({ user_id: id }),
+    });
+    const out = await res.json();
+    if (!res.ok) { setStatus("Delete failed: " + (out.error || res.status), "err"); return; }
+    setStatus("User deleted.", "ok");
+    loadUsers();
+  } catch (e) {
+    setStatus("Delete error: " + e.message, "err");
+  }
+}
+
+async function logout() { await sb.auth.signOut(); window.location.href = "index.html"; }
+</script>
+</body>
+</html>
