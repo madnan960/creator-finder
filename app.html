@@ -18,27 +18,37 @@
   }
   * { box-sizing:border-box; margin:0; padding:0; }
   body { background:
-      radial-gradient(1100px 500px at 80% -10%, #1a2340 0%, transparent 60%),
-      radial-gradient(900px 500px at 0% 0%, #14243a 0%, transparent 55%), var(--bg);
-    color:var(--ink); font-family:'Sora',system-ui,sans-serif; line-height:1.55; min-height:100vh; padding:32px 20px 90px; }
+      radial-gradient(1200px 600px at 85% -15%, #20294a 0%, transparent 58%),
+      radial-gradient(1000px 600px at -5% 5%, #15273f 0%, transparent 55%),
+      radial-gradient(700px 700px at 50% 120%, #1a1530 0%, transparent 60%),
+      var(--bg); color:var(--ink); font-family:'Sora',system-ui,sans-serif; line-height:1.55; min-height:100vh; padding:32px 20px 90px; }
   .wrap { max-width:1060px; margin:0 auto; }
-  .gate { max-width:480px; margin:80px auto; text-align:center; background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:36px; }
+  .gate { max-width:480px; margin:80px auto; text-align:center; background:linear-gradient(180deg,var(--panel),var(--bg-2)); border:1px solid var(--line); border-radius:var(--radius); padding:40px 36px; box-shadow:0 30px 80px -40px #000; }
   .gate h2 { font-size:22px; margin-bottom:10px; }
   .gate p { color:var(--muted); margin-bottom:22px; }
   .hidden { display:none; }
 
+  /* tips card */
+  .tips .tipgrid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  @media (max-width:680px){ .tips .tipgrid{ grid-template-columns:1fr; } }
+  .tip { display:flex; gap:11px; font-size:13.5px; color:var(--muted); line-height:1.5; }
+  .tip strong { color:var(--ink); font-weight:600; }
+  .tipdot { flex-shrink:0; width:7px; height:7px; border-radius:50%; background:var(--amber); margin-top:7px; box-shadow:0 0 8px var(--amber); }
+
   .topbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; flex-wrap:wrap; gap:12px; }
   .brand { font-weight:800; font-size:22px; }
+  .welcome { font-size:13px; color:var(--muted); margin-top:2px; }
   .brand .grad { background:linear-gradient(120deg,var(--amber),#ffd789); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
   .userbox { display:flex; align-items:center; gap:14px; font-size:13px; color:var(--muted); font-family:'JetBrains Mono',monospace; }
   .pill { background:var(--amber-soft); border:1px solid var(--amber-line); color:var(--amber); padding:4px 10px; border-radius:100px; font-size:12px; }
 
-  .panel { background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:24px; margin-top:20px; }
+  .panel { background:linear-gradient(180deg,var(--panel),#11172499); border:1px solid var(--line); border-radius:var(--radius); padding:24px; margin-top:20px; box-shadow:0 1px 0 #ffffff08 inset, 0 20px 50px -40px #000; }
   .panel h2 { font-size:12px; font-family:'JetBrains Mono',monospace; text-transform:uppercase; letter-spacing:.1em; color:var(--amber); margin-bottom:18px; font-weight:500; display:flex; align-items:center; gap:10px; }
   .panel h2::after { content:""; flex:1; height:1px; background:var(--line); }
   label { display:block; font-size:13px; color:var(--muted); margin-bottom:7px; }
-  input, textarea { width:100%; background:var(--panel-2); border:1px solid var(--line); color:var(--ink); border-radius:11px; padding:12px 14px; font-family:'JetBrains Mono',monospace; font-size:14px; transition:border-color .15s, box-shadow .15s; }
-  input:focus, textarea:focus { outline:none; border-color:var(--amber-line); box-shadow:0 0 0 3px var(--amber-soft); }
+  input, textarea, select { width:100%; background:var(--panel-2); border:1px solid var(--line); color:var(--ink); border-radius:11px; padding:12px 14px; font-family:'JetBrains Mono',monospace; font-size:14px; transition:border-color .15s, box-shadow .15s; }
+  input:focus, textarea:focus, select:focus { outline:none; border-color:var(--amber-line); box-shadow:0 0 0 3px var(--amber-soft); }
+  select { cursor:pointer; appearance:none; -webkit-appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238a93ad' d='M6 8L2 4h8z'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 14px center; padding-right:34px; }
   textarea { resize:vertical; min-height:66px; }
   .field { margin-bottom:18px; }
   .hint { font-size:12px; color:var(--muted); margin-top:7px; }
@@ -97,7 +107,10 @@
   <!-- The actual app -->
   <div id="app" class="hidden">
     <div class="topbar">
-      <div class="brand"><span class="grad">CreatorScout</span></div>
+      <div>
+        <div class="brand"><span class="grad">CreatorScout</span></div>
+        <div class="welcome">Find creators, filter by format, export for outreach.</div>
+      </div>
       <div class="userbox">
         <span id="who"></span>
         <span class="pill" id="planPill"></span>
@@ -126,8 +139,48 @@
         <div class="field"><label for="views">Min recent views</label><input id="views" type="number" value="100000"></div>
         <div class="field"><label for="per">Scan per keyword</label><input id="per" type="number" value="50" max="100"></div>
       </div>
+      <div class="grid4" style="grid-template-columns:1fr 1fr;">
+        <div class="field">
+          <label for="content">Content type</label>
+          <select id="content">
+            <option value="any">Any</option>
+            <option value="shorts">Shorts only</option>
+            <option value="both">Long + Shorts (both)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="fb">Facebook link</label>
+          <select id="fb">
+            <option value="any">Any</option>
+            <option value="has">Has Facebook link</option>
+            <option value="no">No Facebook link</option>
+          </select>
+        </div>
+      </div>
       <button class="btn" id="go" onclick="run()"><span id="go-label">Find creators</span></button>
       <div class="status" id="status"></div>
+    </div>
+
+    <div class="panel tips">
+      <h2>Tips & limits</h2>
+      <div class="tipgrid">
+        <div class="tip">
+          <span class="tipdot"></span>
+          <div><strong>Mind your quota.</strong> Each YouTube key gets 10,000 free units a day. One keyword uses roughly 100–300 units, so 2–4 broad searches a day is typical. Quota resets every morning.</div>
+        </div>
+        <div class="tip">
+          <span class="tipdot"></span>
+          <div><strong>Fewer keywords, deeper scan.</strong> 3–5 sharp keywords with a higher "scan per keyword" beats a long list of vague ones — and uses less quota.</div>
+        </div>
+        <div class="tip">
+          <span class="tipdot"></span>
+          <div><strong>"Both" is strict.</strong> The Long + Shorts filter only keeps channels whose recent uploads include both formats, so expect fewer results there.</div>
+        </div>
+        <div class="tip">
+          <span class="tipdot"></span>
+          <div><strong>Estimates, not guarantees.</strong> Voice language, content type and Facebook links are read from channel data — accurate most of the time, but not 100%. Always spot-check before outreach.</div>
+        </div>
+      </div>
     </div>
 
     <div class="results" id="results">
@@ -139,7 +192,7 @@
         <table>
           <thead><tr>
             <th>#</th><th>Channel</th><th>Link</th><th class="num">Subscribers</th>
-            <th class="num">Top recent views</th><th class="num">Videos</th><th>Email</th><th>Keyword</th>
+            <th class="num">Top recent views</th><th>Type</th><th>FB</th><th>Email</th><th>Keyword</th>
           </tr></thead>
           <tbody id="tbody"></tbody>
         </table>
@@ -209,9 +262,34 @@ async function apiGet(endpoint,params,key){ params.key=key; const url=BASE+"/"+e
 function isEnglishText(t){ if(!t)return true; const L=[...t].filter(c=>/\p{L}/u.test(c)); if(!L.length)return true; return L.filter(c=>c.charCodeAt(0)<128).length/L.length>=0.8; }
 function looksLikeMusic(ch){ const b=(ch.snippet.title+" "+(ch.snippet.description||"")).toLowerCase(); return MUSIC_SIGNALS.some(s=>b.includes(s)); }
 function extractEmail(d){ const m=(d||"").match(EMAIL_RE); return m?m[0]:""; }
+function hasFacebook(ch){
+  const blob=((ch.snippet.description||"")+" "+JSON.stringify(ch.brandingSettings||"")).toLowerCase();
+  return blob.includes("facebook.com")||blob.includes("fb.com")||blob.includes("fb.me");
+}
+// ISO 8601 duration (PT#M#S) -> seconds
+function parseDuration(iso){
+  const m=(iso||"").match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+  if(!m)return 0;
+  return (parseInt(m[1]||0)*3600)+(parseInt(m[2]||0)*60)+parseInt(m[3]||0);
+}
 async function searchChannels(kw,max,key){ let out=[],tok=null,f=0; while(f<max){ const p={part:"snippet",q:kw,type:"channel",maxResults:Math.min(50,max-f),relevanceLanguage:"en"}; if(tok)p.pageToken=tok; const d=await apiGet("search",p,key); if(!d.items)break; out.push(...d.items.map(i=>i.snippet.channelId)); f+=d.items.length; tok=d.nextPageToken; if(!tok)break; } return out; }
-async function getChannelStats(ids,key){ const res={}; for(let i=0;i<ids.length;i+=50){ const d=await apiGet("channels",{part:"snippet,statistics,contentDetails",id:ids.slice(i,i+50).join(",")},key); if(d.items)for(const it of d.items)res[it.id]=it; } return res; }
-async function recentInfo(pl,key){ const d=await apiGet("playlistItems",{part:"contentDetails",playlistId:pl,maxResults:5},key); if(!d.items||!d.items.length)return{mx:0,music:false,audioEn:true}; const vids=d.items.map(it=>it.contentDetails.videoId); const v=await apiGet("videos",{part:"statistics,snippet",id:vids.join(",")},key); if(!v.items)return{mx:0,music:false,audioEn:true}; let mx=0,music=0,audioEn=true; for(const x of v.items){ mx=Math.max(mx,parseInt(x.statistics?.viewCount||0)); if(x.snippet.categoryId===MUSIC_CATEGORY_ID)music++; for(const k of ["defaultAudioLanguage","defaultLanguage"]){const lang=x.snippet[k]||""; if(lang&&!lang.toLowerCase().startsWith("en"))audioEn=false;} } return {mx,music:music>=Math.max(1,Math.floor(v.items.length/2)),audioEn}; }
+async function getChannelStats(ids,key){ const res={}; for(let i=0;i<ids.length;i+=50){ const d=await apiGet("channels",{part:"snippet,statistics,contentDetails,brandingSettings",id:ids.slice(i,i+50).join(",")},key); if(d.items)for(const it of d.items)res[it.id]=it; } return res; }
+async function recentInfo(pl,key){
+  const d=await apiGet("playlistItems",{part:"contentDetails",playlistId:pl,maxResults:10},key);
+  if(!d.items||!d.items.length)return{mx:0,music:false,audioEn:true,hasShorts:false,hasLong:false};
+  const vids=d.items.map(it=>it.contentDetails.videoId);
+  const v=await apiGet("videos",{part:"statistics,snippet,contentDetails",id:vids.join(",")},key);
+  if(!v.items)return{mx:0,music:false,audioEn:true,hasShorts:false,hasLong:false};
+  let mx=0,music=0,audioEn=true,hasShorts=false,hasLong=false;
+  for(const x of v.items){
+    mx=Math.max(mx,parseInt(x.statistics?.viewCount||0));
+    if(x.snippet.categoryId===MUSIC_CATEGORY_ID)music++;
+    for(const k of ["defaultAudioLanguage","defaultLanguage"]){const lang=x.snippet[k]||""; if(lang&&!lang.toLowerCase().startsWith("en"))audioEn=false;}
+    const dur=parseDuration(x.contentDetails?.duration);
+    if(dur>0&&dur<=180)hasShorts=true; else if(dur>180)hasLong=true;
+  }
+  return {mx,music:music>=Math.max(1,Math.floor(v.items.length/2)),audioEn,hasShorts,hasLong};
+}
 
 async function run(){
   const apiKey=$("key").value.trim();
@@ -220,6 +298,8 @@ async function run(){
   const MAX_SUBS=parseInt($("maxsubs").value)||Number.MAX_SAFE_INTEGER;
   const MIN_VIEWS=parseInt($("views").value)||0;
   const PER=Math.min(parseInt($("per").value)||50,100);
+  const CONTENT=$("content").value;
+  const FB=$("fb").value;
   if(!apiKey){setStatus("Enter your API key first.","err");return;}
   if(!keywords.length){setStatus("Enter at least one keyword.","err");return;}
   if(MAX_SUBS<MIN_SUBS){setStatus("Max subscribers must be greater than min.","err");return;}
@@ -238,11 +318,19 @@ async function run(){
         if(!(isEnglishText(s.title)&&isEnglishText(s.description)))continue;
         const dl=s.defaultLanguage||""; if(dl&&!dl.toLowerCase().startsWith("en"))continue;
         if(looksLikeMusic(ch))continue;
+        // Facebook filter
+        const fbPresent=hasFacebook(ch);
+        if(FB==="has"&&!fbPresent)continue;
+        if(FB==="no"&&fbPresent)continue;
         const up=ch.contentDetails?.relatedPlaylists?.uploads; if(!up)continue;
-        const {mx,music,audioEn}=await recentInfo(up,apiKey);
+        const {mx,music,audioEn,hasShorts,hasLong}=await recentInfo(up,apiKey);
         if(music||mx<MIN_VIEWS||!audioEn)continue;
+        // Content type filter
+        if(CONTENT==="shorts"&&!hasShorts)continue;
+        if(CONTENT==="both"&&!(hasShorts&&hasLong))continue;
         const handle=s.customUrl||"";
-        qualified.push({name:s.title,link:"https://www.youtube.com/channel/"+cid,handle:handle?"https://www.youtube.com/"+handle:"",subs,totalViews:parseInt(ch.statistics?.viewCount||0),videos:parseInt(ch.statistics?.videoCount||0),topRecentViews:mx,email:extractEmail(s.description),country:s.country||"",keyword:kw});
+        const ctype=(hasShorts&&hasLong)?"both":(hasShorts?"shorts":"long");
+        qualified.push({name:s.title,link:"https://www.youtube.com/channel/"+cid,handle:handle?"https://www.youtube.com/"+handle:"",subs,totalViews:parseInt(ch.statistics?.viewCount||0),videos:parseInt(ch.statistics?.videoCount||0),topRecentViews:mx,email:extractEmail(s.description),facebook:fbPresent?"yes":"no",ctype,country:s.country||"",keyword:kw});
       }
     }
   }catch(e){
@@ -259,15 +347,15 @@ async function run(){
 function render(rows){
   const tb=$("tbody"); tb.innerHTML="";
   rows.forEach((r,i)=>{ const tr=document.createElement("tr");
-    tr.innerHTML='<td class="muted-cell">'+(i+1)+'</td><td class="name">'+esc(r.name)+'</td><td><a href="'+r.link+'" target="_blank" rel="noopener">open ↗</a></td><td class="num">'+fmt(r.subs)+'</td><td class="num">'+fmt(r.topRecentViews)+'</td><td class="num">'+fmt(r.videos)+'</td><td class="muted-cell">'+(r.email?esc(r.email):"—")+'</td><td class="muted-cell">'+esc(r.keyword)+'</td>';
+    tr.innerHTML='<td class="muted-cell">'+(i+1)+'</td><td class="name">'+esc(r.name)+'</td><td><a href="'+r.link+'" target="_blank" rel="noopener">open ↗</a></td><td class="num">'+fmt(r.subs)+'</td><td class="num">'+fmt(r.topRecentViews)+'</td><td class="muted-cell">'+esc(r.ctype)+'</td><td class="muted-cell">'+esc(r.facebook)+'</td><td class="muted-cell">'+(r.email?esc(r.email):"—")+'</td><td class="muted-cell">'+esc(r.keyword)+'</td>';
     tb.appendChild(tr); });
   $("rcount").textContent=rows.length; $("results").classList.add("show");
 }
 function exportXlsx(){
   if(!lastResults.length)return;
-  const data=lastResults.map((r,i)=>({"#":i+1,"Channel Name":r.name,"Channel Link":r.link,"Handle URL":r.handle,"Subscribers":r.subs,"Total Views":r.totalViews,"Video Count":r.videos,"Top Recent Views":r.topRecentViews,"Email":r.email,"Country":r.country,"Keyword":r.keyword}));
+  const data=lastResults.map((r,i)=>({"#":i+1,"Channel Name":r.name,"Channel Link":r.link,"Handle URL":r.handle,"Subscribers":r.subs,"Total Views":r.totalViews,"Video Count":r.videos,"Top Recent Views":r.topRecentViews,"Content Type":r.ctype,"Facebook":r.facebook,"Email":r.email,"Country":r.country,"Keyword":r.keyword}));
   const ws=XLSX.utils.json_to_sheet(data);
-  ws["!cols"]=[{wch:4},{wch:30},{wch:48},{wch:44},{wch:13},{wch:15},{wch:11},{wch:17},{wch:28},{wch:9},{wch:18}];
+  ws["!cols"]=[{wch:4},{wch:30},{wch:48},{wch:44},{wch:13},{wch:15},{wch:11},{wch:17},{wch:13},{wch:10},{wch:28},{wch:9},{wch:18}];
   const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"Creators");
   const stamp=new Date().toISOString().slice(0,16).replace(/[-:T]/g,"");
   XLSX.writeFile(wb,"creatorscout_"+stamp+".xlsx");
