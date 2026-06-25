@@ -396,11 +396,16 @@ function parseDuration(iso){
 async function searchChannels(kw,max,key){ let out=[],tok=null,f=0; while(f<max){ const p={part:"snippet",q:kw,type:"channel",maxResults:Math.min(50,max-f),relevanceLanguage:"en"}; if(tok)p.pageToken=tok; const d=await apiGet("search",p,key); if(!d.items)break; out.push(...d.items.map(i=>i.snippet.channelId)); f+=d.items.length; tok=d.nextPageToken; if(!tok)break; } return out; }
 async function getChannelStats(ids,key){ const res={}; for(let i=0;i<ids.length;i+=50){ const d=await apiGet("channels",{part:"snippet,statistics,contentDetails,brandingSettings",id:ids.slice(i,i+50).join(",")},key); if(d.items)for(const it of d.items)res[it.id]=it; } return res; }
 async function recentInfo(pl,key){
-  const d=await apiGet("playlistItems",{part:"contentDetails",playlistId:pl,maxResults:10},key);
-  if(!d.items||!d.items.length)return{mx:0,music:false,audioEn:true,hasShorts:false,hasLong:false,longestSec:0,lastUpload:null};
+  const empty={mx:0,music:false,audioEn:true,hasShorts:false,hasLong:false,longestSec:0,lastUpload:null,skip:false};
+  let d;
+  try { d=await apiGet("playlistItems",{part:"contentDetails",playlistId:pl,maxResults:10},key); }
+  catch(e){ if(e.status===404){return {...empty,skip:true};} if(e.status===403){throw e;} return {...empty,skip:true}; }
+  if(!d.items||!d.items.length)return {...empty,skip:true};
   const vids=d.items.map(it=>it.contentDetails.videoId);
-  const v=await apiGet("videos",{part:"statistics,snippet,contentDetails",id:vids.join(",")},key);
-  if(!v.items)return{mx:0,music:false,audioEn:true,hasShorts:false,hasLong:false,longestSec:0,lastUpload:null};
+  let v;
+  try { v=await apiGet("videos",{part:"statistics,snippet,contentDetails",id:vids.join(",")},key); }
+  catch(e){ if(e.status===403){throw e;} return {...empty,skip:true}; }
+  if(!v.items)return {...empty,skip:true};
   let mx=0,music=0,audioEn=true,hasShorts=false,hasLong=false,longestSec=0,lastUpload=null;
   for(const x of v.items){
     mx=Math.max(mx,parseInt(x.statistics?.viewCount||0));
@@ -412,7 +417,7 @@ async function recentInfo(pl,key){
     const pub=x.snippet?.publishedAt?new Date(x.snippet.publishedAt):null;
     if(pub&&(!lastUpload||pub>lastUpload))lastUpload=pub;
   }
-  return {mx,music:music>=Math.max(1,Math.floor(v.items.length/2)),audioEn,hasShorts,hasLong,longestSec,lastUpload};
+  return {mx,music:music>=Math.max(1,Math.floor(v.items.length/2)),audioEn,hasShorts,hasLong,longestSec,lastUpload,skip:false};
 }
 
 async function run(){
@@ -450,7 +455,8 @@ async function run(){
         if(FB==="has"&&!fbPresent)continue;
         if(FB==="no"&&fbPresent)continue;
         const up=ch.contentDetails?.relatedPlaylists?.uploads; if(!up)continue;
-        const {mx,music,audioEn,hasShorts,hasLong,longestSec,lastUpload}=await recentInfo(up,apiKey);
+        const {mx,music,audioEn,hasShorts,hasLong,longestSec,lastUpload,skip}=await recentInfo(up,apiKey);
+        if(skip)continue;
         if(music||mx<MIN_VIEWS||!audioEn)continue;
         // Content type filter
         if(CONTENT==="shorts"&&!hasShorts)continue;
