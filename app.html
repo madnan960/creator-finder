@@ -328,8 +328,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const now = new Date();
   const trialEnds = profile.trial_ends ? new Date(profile.trial_ends) : null;
+  const isAdmin = profile.is_admin === true;
   const isPaid = profile.plan === "pro" || profile.plan === "paid";
   const trialActive = trialEnds && now < trialEnds;
+
+  // Admin always has full access — skip ban/trial checks
+  if (isAdmin) {
+    $("who").textContent = user.email;
+    $("planPill").textContent = "admin";
+    showOnly("app");
+    return;
+  }
 
   if (profile.banned) { showOnly("trialOver"); $("trialOver").querySelector("h2").textContent = "Account suspended"; $("trialOver").querySelector("p").textContent = "Your account has been suspended. Contact support if you think this is a mistake."; return; }
   if (!isPaid && !trialActive) { showOnly("trialOver"); return; }
