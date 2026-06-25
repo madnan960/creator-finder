@@ -54,6 +54,10 @@
   .hint { font-size:12px; color:var(--muted); margin-top:7px; }
   .hint a { color:var(--green); }
   .kw-cats { margin-bottom:14px; }
+  .kw-add { display:flex; gap:8px; margin-bottom:10px; }
+  .kw-add input { flex:1; }
+  .btn-add { flex-shrink:0; background:var(--green-soft); border:1px solid var(--green); color:var(--green); font-weight:600; font-size:13px; padding:0 16px; border-radius:10px; cursor:pointer; font-family:'Sora',sans-serif; white-space:nowrap; transition:all .12s; }
+  .btn-add:hover { background:var(--green); color:#fff; }
   .kw-cat { margin-bottom:12px; }
   .kw-cat-label { font-size:11px; font-family:'JetBrains Mono',monospace; text-transform:uppercase; letter-spacing:.08em; color:var(--muted-2); margin-bottom:7px; }
   .kw-tags { display:flex; flex-wrap:wrap; gap:7px; }
@@ -139,8 +143,12 @@
       <div class="field">
         <label>Keywords — tap to add, or type your own</label>
         <div class="kw-cats" id="kwCats"></div>
+        <div class="kw-add">
+          <input id="kwAdd" type="text" placeholder="Type a custom keyword and press Add" onkeydown="if(event.key==='Enter'){event.preventDefault();addCustomKw();}">
+          <button type="button" class="btn-add" onclick="addCustomKw()">+ Add</button>
+        </div>
         <textarea id="kw" placeholder="Tap tags above or type here, comma separated">daily vlog, tech review, fitness, cooking, finance tips</textarea>
-        <p class="hint">Tip: tap a tag to add it. Tap again to remove. You can also type custom keywords separated by commas.</p>
+        <p class="hint">Tip: tap a tag to add it. Tap again to remove. Or type your own keyword above and press Add. Multiple keywords can be comma separated.</p>
       </div>
       <div class="grid4" style="grid-template-columns:repeat(3,1fr);">
         <div class="field"><label for="subs">Min subscribers</label><input id="subs" type="number" value="200000"></div>
@@ -251,13 +259,16 @@ function showOnly(id) {
 
 // ---- Keyword categories ----
 const KW_CATEGORIES = {
-  "Lifestyle & Vlogs": ["daily vlog","storytime","day in my life","morning routine","get ready with me","apartment tour","minimalism","productivity"],
-  "Tech & Reviews": ["tech review","gadget unboxing","smartphone review","laptop review","software tutorial","AI tools","app review","pc build"],
-  "Money & Business": ["personal finance","investing","side hustle","passive income","stock market","real estate","entrepreneur","dropshipping","budgeting tips"],
-  "Health & Fitness": ["home workout","weight loss","gym routine","healthy recipes","meal prep","yoga","calisthenics","nutrition tips"],
-  "Food & Cooking": ["easy recipes","baking","cooking tutorial","street food","restaurant review","vegan recipes","dessert","food challenge"],
-  "Education & Skills": ["study tips","language learning","coding tutorial","science explained","history documentary","book review","photography tips","public speaking"],
-  "Entertainment & Hobbies": ["reaction videos","commentary","movie review","comedy skit","travel guide","car review","pet care","gardening","diy projects"],
+  "Lifestyle & Vlogs": ["daily vlog","storytime","day in my life","morning routine","night routine","get ready with me","apartment tour","room makeover","minimalism","productivity","that girl","clean with me","slow living","grwm"],
+  "Tech & Reviews": ["tech review","gadget unboxing","smartphone review","laptop review","software tutorial","AI tools","app review","pc build","tech news","headphones review","smart home","coding setup","best apps"],
+  "Money & Business": ["personal finance","investing","side hustle","passive income","stock market","real estate","entrepreneur","dropshipping","budgeting tips","make money online","credit cards","crypto","financial freedom","print on demand"],
+  "Health & Fitness": ["home workout","weight loss","gym routine","healthy recipes","meal prep","yoga","calisthenics","nutrition tips","weight lifting","running","fat loss","supplements","mental health","mobility"],
+  "Food & Cooking": ["easy recipes","baking","cooking tutorial","street food","restaurant review","vegan recipes","dessert","food challenge","air fryer recipes","high protein meals","meal prep recipes","cocktails","coffee","budget meals"],
+  "Education & Skills": ["study tips","language learning","coding tutorial","science explained","history documentary","book review","photography tips","public speaking","math explained","essay writing","exam prep","learn english","note taking"],
+  "Entertainment & Hobbies": ["reaction videos","commentary","movie review","comedy skit","travel guide","car review","pet care","gardening","diy projects","podcast clips","film analysis","anime review","board games"],
+  "Gaming": ["gaming","game review","walkthrough","lets play","gaming setup","mobile gaming","minecraft","fortnite","retro gaming","esports","game tips","speedrun"],
+  "Beauty & Fashion": ["makeup tutorial","skincare routine","outfit ideas","haul","fashion lookbook","nail art","hair tutorial","thrift flip","style tips","product review","get unready with me"],
+  "Faceless & AI": ["faceless channel","ai content","text to speech","stock footage","motivation","meditation","sleep music","top 10 lists","facts channel","ai art","automation"],
 };
 
 function getKeywords() {
@@ -265,6 +276,23 @@ function getKeywords() {
 }
 function setKeywords(arr) {
   $("kw").value = arr.join(", ");
+}
+function addCustomKw() {
+  const inp = $("kwAdd");
+  const raw = (inp.value || "").trim();
+  if (!raw) return;
+  let kws = getKeywords();
+  // allow comma-separated multiple at once
+  raw.split(",").map(k => k.trim()).filter(Boolean).forEach(w => {
+    if (!kws.some(k => k.toLowerCase() === w.toLowerCase())) kws.push(w);
+  });
+  setKeywords(kws);
+  inp.value = "";
+  // refresh tag highlights in case a typed word matches a ready tag
+  const current = getKeywords().map(k => k.toLowerCase());
+  document.querySelectorAll(".kw-tag").forEach(t => {
+    t.classList.toggle("on", current.includes(t.textContent.toLowerCase()));
+  });
 }
 function toggleTag(word, el) {
   let kws = getKeywords();
