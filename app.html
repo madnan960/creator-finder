@@ -168,6 +168,25 @@
           </select>
         </div>
       </div>
+      <div class="grid4" style="grid-template-columns:1fr 1fr;">
+        <div class="field">
+          <label for="minlen">Min video length</label>
+          <select id="minlen">
+            <option value="0">Any</option>
+            <option value="300">5+ minutes</option>
+            <option value="600">10+ minutes</option>
+            <option value="1200">20+ minutes</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="activity">Channel activity</label>
+          <select id="activity">
+            <option value="any">Any</option>
+            <option value="active">Active (posted last year)</option>
+            <option value="inactive">Inactive (1yr+ no upload)</option>
+          </select>
+        </div>
+      </div>
       <button class="btn" id="go" onclick="run()"><span id="go-label">Find creators</span></button>
       <div class="status" id="status"></div>
     </div>
@@ -210,7 +229,7 @@
         <table>
           <thead><tr>
             <th>#</th><th>Channel</th><th>Link</th><th class="num">Subscribers</th>
-            <th class="num">Top recent views</th><th>Type</th><th>FB</th><th>Email</th><th>Keyword</th>
+            <th class="num">Top recent views</th><th>Type</th><th>FB</th><th>Last upload</th><th>Email</th><th>Keyword</th>
           </tr></thead>
           <tbody id="tbody"></tbody>
         </table>
@@ -356,19 +375,22 @@ async function searchChannels(kw,max,key){ let out=[],tok=null,f=0; while(f<max)
 async function getChannelStats(ids,key){ const res={}; for(let i=0;i<ids.length;i+=50){ const d=await apiGet("channels",{part:"snippet,statistics,contentDetails,brandingSettings",id:ids.slice(i,i+50).join(",")},key); if(d.items)for(const it of d.items)res[it.id]=it; } return res; }
 async function recentInfo(pl,key){
   const d=await apiGet("playlistItems",{part:"contentDetails",playlistId:pl,maxResults:10},key);
-  if(!d.items||!d.items.length)return{mx:0,music:false,audioEn:true,hasShorts:false,hasLong:false};
+  if(!d.items||!d.items.length)return{mx:0,music:false,audioEn:true,hasShorts:false,hasLong:false,longestSec:0,lastUpload:null};
   const vids=d.items.map(it=>it.contentDetails.videoId);
   const v=await apiGet("videos",{part:"statistics,snippet,contentDetails",id:vids.join(",")},key);
-  if(!v.items)return{mx:0,music:false,audioEn:true,hasShorts:false,hasLong:false};
-  let mx=0,music=0,audioEn=true,hasShorts=false,hasLong=false;
+  if(!v.items)return{mx:0,music:false,audioEn:true,hasShorts:false,hasLong:false,longestSec:0,lastUpload:null};
+  let mx=0,music=0,audioEn=true,hasShorts=false,hasLong=false,longestSec=0,lastUpload=null;
   for(const x of v.items){
     mx=Math.max(mx,parseInt(x.statistics?.viewCount||0));
     if(x.snippet.categoryId===MUSIC_CATEGORY_ID)music++;
     for(const k of ["defaultAudioLanguage","defaultLanguage"]){const lang=x.snippet[k]||""; if(lang&&!lang.toLowerCase().startsWith("en"))audioEn=false;}
     const dur=parseDuration(x.contentDetails?.duration);
     if(dur>0&&dur<=180)hasShorts=true; else if(dur>180)hasLong=true;
+    if(dur>longestSec)longestSec=dur;
+    const pub=x.snippet?.publishedAt?new Date(x.snippet.publishedAt):null;
+    if(pub&&(!lastUpload||pub>lastUpload))lastUpload=pub;
   }
-  return {mx,music:music>=Math.max(1,Math.floor(v.items.length/2)),audioEn,hasShorts,hasLong};
+  return {mx,music:music>=Math.max(1,Math.floor(v.items.length/2)),audioEn,hasShorts,hasLong,longestSec,lastUpload};
 }
 
 async function run(){
@@ -380,6 +402,8 @@ async function run(){
   const PER=Math.min(parseInt($("per").value)||50,100);
   const CONTENT=$("content").value;
   const FB=$("fb").value;
+  const MIN_LEN=parseInt($("minlen").value)||0;
+  const ACTIVITY=$("activity").value;
   if(!apiKey){setStatus("Enter your API key first.","err");return;}
   if(!keywords.length){setStatus("Enter at least one keyword.","err");return;}
   if(MAX_SUBS<MIN_SUBS){setStatus("Max subscribers must be greater than min.","err");return;}
@@ -403,14 +427,24 @@ async function run(){
         if(FB==="has"&&!fbPresent)continue;
         if(FB==="no"&&fbPresent)continue;
         const up=ch.contentDetails?.relatedPlaylists?.uploads; if(!up)continue;
-        const {mx,music,audioEn,hasShorts,hasLong}=await recentInfo(up,apiKey);
+        const {mx,music,audioEn,hasShorts,hasLong,longestSec,lastUpload}=await recentInfo(up,apiKey);
         if(music||mx<MIN_VIEWS||!audioEn)continue;
         // Content type filter
         if(CONTENT==="shorts"&&!hasShorts)continue;
         if(CONTENT==="both"&&!(hasShorts&&hasLong))continue;
+        // Min video length filter (longest recent video must meet threshold)
+        if(MIN_LEN>0&&longestSec<MIN_LEN)continue;
+        // Channel activity filter (based on most recent upload date)
+        if(ACTIVITY!=="any"){
+          if(!lastUpload)continue;
+          const daysSince=(Date.now()-lastUpload.getTime())/86400000;
+          if(ACTIVITY==="active"&&daysSince>365)continue;
+          if(ACTIVITY==="inactive"&&daysSince<=365)continue;
+        }
         const handle=s.customUrl||"";
         const ctype=(hasShorts&&hasLong)?"both":(hasShorts?"shorts":"long");
-        qualified.push({name:s.title,link:"https://www.youtube.com/channel/"+cid,handle:handle?"https://www.youtube.com/"+handle:"",subs,totalViews:parseInt(ch.statistics?.viewCount||0),videos:parseInt(ch.statistics?.videoCount||0),topRecentViews:mx,email:extractEmail(s.description),facebook:fbPresent?"yes":"no",ctype,country:s.country||"",keyword:kw});
+        const lastUploadStr=lastUpload?lastUpload.toISOString().slice(0,10):"";
+        qualified.push({name:s.title,link:"https://www.youtube.com/channel/"+cid,handle:handle?"https://www.youtube.com/"+handle:"",subs,totalViews:parseInt(ch.statistics?.viewCount||0),videos:parseInt(ch.statistics?.videoCount||0),topRecentViews:mx,email:extractEmail(s.description),facebook:fbPresent?"yes":"no",ctype,lastUpload:lastUploadStr,country:s.country||"",keyword:kw});
       }
     }
   }catch(e){
@@ -428,15 +462,15 @@ async function run(){
 function render(rows){
   const tb=$("tbody"); tb.innerHTML="";
   rows.forEach((r,i)=>{ const tr=document.createElement("tr");
-    tr.innerHTML='<td class="muted-cell">'+(i+1)+'</td><td class="name">'+esc(r.name)+'</td><td><a href="'+r.link+'" target="_blank" rel="noopener">open ↗</a></td><td class="num">'+fmt(r.subs)+'</td><td class="num">'+fmt(r.topRecentViews)+'</td><td class="muted-cell">'+esc(r.ctype)+'</td><td class="muted-cell">'+esc(r.facebook)+'</td><td class="muted-cell">'+(r.email?esc(r.email):"—")+'</td><td class="muted-cell">'+esc(r.keyword)+'</td>';
+    tr.innerHTML='<td class="muted-cell">'+(i+1)+'</td><td class="name">'+esc(r.name)+'</td><td><a href="'+r.link+'" target="_blank" rel="noopener">open ↗</a></td><td class="num">'+fmt(r.subs)+'</td><td class="num">'+fmt(r.topRecentViews)+'</td><td class="muted-cell">'+esc(r.ctype)+'</td><td class="muted-cell">'+esc(r.facebook)+'</td><td class="muted-cell">'+(r.lastUpload?esc(r.lastUpload):"—")+'</td><td class="muted-cell">'+(r.email?esc(r.email):"—")+'</td><td class="muted-cell">'+esc(r.keyword)+'</td>';
     tb.appendChild(tr); });
   $("rcount").textContent=rows.length; $("results").classList.add("show");
 }
 function exportXlsx(){
   if(!lastResults.length)return;
-  const data=lastResults.map((r,i)=>({"#":i+1,"Channel Name":r.name,"Channel Link":r.link,"Handle URL":r.handle,"Subscribers":r.subs,"Total Views":r.totalViews,"Video Count":r.videos,"Top Recent Views":r.topRecentViews,"Content Type":r.ctype,"Facebook":r.facebook,"Email":r.email,"Country":r.country,"Keyword":r.keyword}));
+  const data=lastResults.map((r,i)=>({"#":i+1,"Channel Name":r.name,"Channel Link":r.link,"Handle URL":r.handle,"Subscribers":r.subs,"Total Views":r.totalViews,"Video Count":r.videos,"Top Recent Views":r.topRecentViews,"Content Type":r.ctype,"Facebook":r.facebook,"Last Upload":r.lastUpload,"Email":r.email,"Country":r.country,"Keyword":r.keyword}));
   const ws=XLSX.utils.json_to_sheet(data);
-  ws["!cols"]=[{wch:4},{wch:30},{wch:48},{wch:44},{wch:13},{wch:15},{wch:11},{wch:17},{wch:13},{wch:10},{wch:28},{wch:9},{wch:18}];
+  ws["!cols"]=[{wch:4},{wch:30},{wch:48},{wch:44},{wch:13},{wch:15},{wch:11},{wch:17},{wch:13},{wch:10},{wch:13},{wch:28},{wch:9},{wch:18}];
   const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"Creators");
   const stamp=new Date().toISOString().slice(0,16).replace(/[-:T]/g,"");
   XLSX.writeFile(wb,"creatorscout_"+stamp+".xlsx");
