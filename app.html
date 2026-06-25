@@ -11,10 +11,11 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   :root {
-    --bg:#0b0f1a; --bg-2:#0f1422; --panel:#141a2b; --panel-2:#1b2236; --line:#283150;
-    --ink:#eef1f8; --muted:#8a93ad; --muted-2:#5f6680;
-    --amber:#f5b14c; --amber-soft:#f5b14c1f; --amber-line:#f5b14c55;
+    --bg:#0b0f1a; --bg-2:#0f1422; --panel:#161d30; --panel-2:#1e2640; --line:#2f3a5e;
+    --ink:#f3f6fc; --muted:#9aa3bd; --muted-2:#646c8a;
+    --amber:#ffc04d; --amber-2:#ffd87a; --amber-soft:#ffc04d24; --amber-line:#ffc04d66;
     --ok:#34d399; --err:#fb7185; --radius:16px;
+    --glow:0 0 24px -6px var(--amber-line);
   }
   * { box-sizing:border-box; margin:0; padding:0; }
   body { background:
@@ -44,12 +45,13 @@
   .userbox { display:flex; align-items:center; gap:14px; font-size:13px; color:var(--muted); font-family:'JetBrains Mono',monospace; }
   .pill { background:var(--amber-soft); border:1px solid var(--amber-line); color:var(--amber); padding:4px 10px; border-radius:100px; font-size:12px; }
 
-  .panel { background:linear-gradient(180deg,var(--panel),#11172499); border:1px solid var(--line); border-radius:var(--radius); padding:24px; margin-top:20px; box-shadow:0 1px 0 #ffffff08 inset, 0 20px 50px -40px #000; }
+  .panel { background:linear-gradient(180deg,var(--panel),#11172499); border:1px solid var(--line); border-radius:var(--radius); padding:24px; margin-top:20px; box-shadow:0 1px 0 #ffffff12 inset, 0 0 0 1px #ffffff05, 0 24px 60px -42px #000, 0 0 50px -30px var(--amber-line); position:relative; }
+  .panel::before { content:""; position:absolute; inset:0; border-radius:var(--radius); padding:1px; background:linear-gradient(120deg, #ffffff14, transparent 40%); -webkit-mask:linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite:xor; mask-composite:exclude; pointer-events:none; }
   .panel h2 { font-size:12px; font-family:'JetBrains Mono',monospace; text-transform:uppercase; letter-spacing:.1em; color:var(--amber); margin-bottom:18px; font-weight:500; display:flex; align-items:center; gap:10px; }
   .panel h2::after { content:""; flex:1; height:1px; background:var(--line); }
   label { display:block; font-size:13px; color:var(--muted); margin-bottom:7px; }
-  input, textarea, select { width:100%; background:var(--panel-2); border:1px solid var(--line); color:var(--ink); border-radius:11px; padding:12px 14px; font-family:'JetBrains Mono',monospace; font-size:14px; transition:border-color .15s, box-shadow .15s; }
-  input:focus, textarea:focus, select:focus { outline:none; border-color:var(--amber-line); box-shadow:0 0 0 3px var(--amber-soft); }
+  input, textarea, select { width:100%; background:linear-gradient(180deg,#222c47,var(--panel-2)); border:1px solid var(--line); color:var(--ink); border-radius:11px; padding:12px 14px; font-family:'JetBrains Mono',monospace; font-size:14px; transition:border-color .15s, box-shadow .15s; box-shadow:0 1px 0 #ffffff0d inset; }
+  input:focus, textarea:focus, select:focus { outline:none; border-color:var(--amber-line); box-shadow:0 0 0 3px var(--amber-soft), 0 0 18px -4px var(--amber-line); }
   select { cursor:pointer; appearance:none; -webkit-appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238a93ad' d='M6 8L2 4h8z'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 14px center; padding-right:34px; }
   textarea { resize:vertical; min-height:66px; }
   .field { margin-bottom:18px; }
@@ -65,7 +67,8 @@
   .grid4 { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
   @media (max-width:720px){ .grid4{ grid-template-columns:1fr 1fr; } }
   @media (max-width:440px){ .grid4{ grid-template-columns:1fr; } }
-  .btn { display:inline-flex; align-items:center; justify-content:center; gap:9px; background:linear-gradient(120deg,var(--amber),#ffc868); color:#1a1205; border:none; border-radius:11px; padding:14px 22px; font-size:15px; font-weight:700; font-family:'Sora',sans-serif; cursor:pointer; transition:transform .08s, box-shadow .15s; width:100%; box-shadow:0 6px 20px -8px var(--amber); }
+  .btn { display:inline-flex; align-items:center; justify-content:center; gap:9px; background:linear-gradient(120deg,var(--amber),var(--amber-2) 55%,var(--amber)); background-size:200% 100%; color:#1a1205; border:none; border-radius:11px; padding:14px 22px; font-size:15px; font-weight:700; font-family:'Sora',sans-serif; cursor:pointer; transition:transform .08s, box-shadow .2s, background-position .4s; width:100%; box-shadow:0 8px 28px -8px var(--amber), 0 0 0 1px #ffffff20 inset, 0 1px 0 #ffffff55 inset; }
+  .btn:hover { background-position:100% 0; box-shadow:0 10px 36px -6px var(--amber), 0 0 22px -4px var(--amber), 0 1px 0 #ffffff66 inset; }
   .btn:hover { box-shadow:0 8px 26px -6px var(--amber); }
   .btn:active { transform:translateY(1px); }
   .btn:disabled { opacity:.55; cursor:not-allowed; box-shadow:none; }
@@ -144,10 +147,9 @@
         <textarea id="kw" placeholder="Tap tags above or type here, comma separated">daily vlog, tech review, fitness, cooking, finance tips</textarea>
         <p class="hint">Tip: tap a tag to add it. Tap again to remove. You can also type custom keywords separated by commas.</p>
       </div>
-      <div class="grid4">
+      <div class="grid4" style="grid-template-columns:repeat(3,1fr);">
         <div class="field"><label for="subs">Min subscribers</label><input id="subs" type="number" value="200000"></div>
         <div class="field"><label for="maxsubs">Max subscribers</label><input id="maxsubs" type="number" value="5000000"></div>
-        <div class="field"><label for="views">Min recent views</label><input id="views" type="number" value="100000"></div>
         <div class="field"><label for="per">Scan per keyword</label><input id="per" type="number" value="50" max="100"></div>
       </div>
       <div class="grid4" style="grid-template-columns:1fr 1fr;">
@@ -182,8 +184,9 @@
           <label for="activity">Channel activity</label>
           <select id="activity">
             <option value="any">Any</option>
-            <option value="active">Active (posted last year)</option>
-            <option value="inactive">Inactive (1yr+ no upload)</option>
+            <option value="active">Active (posted last 6 months)</option>
+            <option value="inactive6">Inactive (6mo+ no upload)</option>
+            <option value="inactive12">Inactive (1yr+ no upload)</option>
           </select>
         </div>
       </div>
@@ -368,6 +371,21 @@ function setStatus(html,cls){ const s=$("status"); s.innerHTML=html; s.className
 function esc(s){ return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 async function apiGet(endpoint,params,key){ params.key=key; const url=BASE+"/"+endpoint+"?"+new URLSearchParams(params).toString(); const r=await fetch(url); if(!r.ok){const body=await r.text(); throw{status:r.status,body};} return r.json(); }
 function isEnglishText(t){ if(!t)return true; const L=[...t].filter(c=>/\p{L}/u.test(c)); if(!L.length)return true; return L.filter(c=>c.charCodeAt(0)<128).length/L.length>=0.8; }
+// Detect Hindi (Devanagari) or Urdu/Arabic script
+function hasHindiUrduScript(t){
+  if(!t)return false;
+  // Devanagari U+0900–097F, Arabic U+0600–06FF + U+0750–077F (Urdu)
+  return /[\u0900-\u097F\u0600-\u06FF\u0750-\u077F]/.test(t);
+}
+// Common Roman Hindi/Urdu words (written in English letters)
+const HINDI_URDU_WORDS = ["vlog hindi","desi","bhai","zindagi","pyaar","mohabbat","shaadi","khana","khaana","kahani","kahaani","dost","yaar","bakwas","masti","gaana","gana","filmy","bollywood","lollywood","pakistani","hindustani","wala ","wali ","hatke","jugaad","paisa","paise","ghar ka","garib","ameer","sapna","sapne","duniya","insaan","aurat","larki","ladki","larka","ladka","bachay","bachpan","ammi","abbu","ustad","janab"];
+function looksHindiUrdu(ch){
+  const t=ch.snippet.title||"";
+  const d=ch.snippet.description||"";
+  if(hasHindiUrduScript(t)||hasHindiUrduScript(d))return true;
+  const blob=(t+" "+d).toLowerCase();
+  return HINDI_URDU_WORDS.some(w=>blob.includes(w));
+}
 function looksLikeMusic(ch){ const b=(ch.snippet.title+" "+(ch.snippet.description||"")).toLowerCase(); return MUSIC_SIGNALS.some(s=>b.includes(s)); }
 function extractEmail(d){ const m=(d||"").match(EMAIL_RE); return m?m[0]:""; }
 function hasFacebook(ch){
@@ -407,7 +425,7 @@ async function run(){
   const keywords=$("kw").value.split(",").map(k=>k.trim()).filter(Boolean);
   const MIN_SUBS=parseInt($("subs").value)||0;
   const MAX_SUBS=parseInt($("maxsubs").value)||Number.MAX_SAFE_INTEGER;
-  const MIN_VIEWS=parseInt($("views").value)||0;
+  const MIN_VIEWS=parseInt($("views")?.value)||0;
   const PER=Math.min(parseInt($("per").value)||50,100);
   const CONTENT=$("content").value;
   const FB=$("fb").value;
@@ -429,6 +447,7 @@ async function run(){
         const subs=parseInt(ch.statistics?.subscriberCount||0);
         if(subs<MIN_SUBS||subs>MAX_SUBS)continue;
         if(!(isEnglishText(s.title)&&isEnglishText(s.description)))continue;
+        if(looksHindiUrdu(ch))continue;
         const dl=s.defaultLanguage||""; if(dl&&!dl.toLowerCase().startsWith("en"))continue;
         if(looksLikeMusic(ch))continue;
         // Facebook filter
@@ -447,8 +466,9 @@ async function run(){
         if(ACTIVITY!=="any"){
           if(!lastUpload)continue;
           const daysSince=(Date.now()-lastUpload.getTime())/86400000;
-          if(ACTIVITY==="active"&&daysSince>365)continue;
-          if(ACTIVITY==="inactive"&&daysSince<=365)continue;
+          if(ACTIVITY==="active"&&daysSince>183)continue;        // posted within 6 months
+          if(ACTIVITY==="inactive6"&&daysSince<=183)continue;     // 6mo+ no upload
+          if(ACTIVITY==="inactive12"&&daysSince<=365)continue;    // 1yr+ no upload
         }
         const handle=s.customUrl||"";
         const ctype=(hasShorts&&hasLong)?"both":(hasShorts?"shorts":"long");
